@@ -4,7 +4,7 @@
    ausgeführt, im Journal gespeichert und bei einem Sync-Konflikt auf die frische
    Fassung erneut angewandt. */
 (function(root,f){ if(typeof module==='object'&&module.exports) module.exports=f(require('./engine.js'),require('./wbcodec.js')); else root.GCore=f(root.GEngine,root.WBCodec); })(typeof self!=='undefined'?self:this,function(E,C){
-  const VERSION='1.0.0';
+  const VERSION='1.0.1';
   // Schlüsselspalten: Zeilen werden über ihre ID gefunden, nicht über die Position
   const KEYS={'Renovierungsplan':0,'Kostenplan':0,'Wissensspeicher':0,'Kontakte':0,'Kosten':null};
   const toHF=v=>{ if(typeof v==='string'){ if(v[0]==='=') return v; return "'"+(v[0]==="'"?v.slice(1):v); } return v===undefined?null:v; };

@@ -48,7 +48,7 @@ Jede Operation schreibt ins Blatt **Aenderungsprotokoll** (`[Lars] …`, `[Mio] 
 
 ### Sync (wie bei der Golf-PWA, „SHA-Türsteher“)
 1. Laden: `GET ?fresh=1&path=workbook.json` mit `X-Read-Key` → Inhalt + `X-Repo-Sha`.
-2. Speichern (3,5 s nach der letzten Änderung): Schnappschuss → `POST` mit `X-Write-Key`, `X-Base-Sha`, Inhalt als Base64 (`X-Encoding: base64`, spart dem Worker CPU-Zeit).
+2. Speichern: lokal 3,5 s nach der letzten Änderung; ans Repo höchstens alle 2 Minuten bzw. sofort beim Verlassen der App: Schnappschuss → `POST` mit `X-Write-Key`, `X-Base-Sha`, Inhalt als Base64 (`X-Encoding: base64`, spart dem Worker CPU-Zeit).
 3. `409` = jemand anderes (anderes Gerät, Claude-Chat) hat inzwischen geschrieben → frische Fassung holen, eigene Ops aus dem Journal erneut anwenden, wieder senden.
 4. Beim Öffnen und bei Rückkehr in die App wird die Kennung geprüft und ggf. neu geladen.
 
@@ -67,12 +67,17 @@ node tools/wbcli.js read   ../gahlendorf-daten/workbook.json Renovierungsplan 50
 node tools/wbcli.js apply  ../gahlendorf-daten/workbook.json ops.json     # Ops wie oben
 node tools/wbcli.js script ../gahlendorf-daten/workbook.json skript.js    # freie Änderungen über die Book-API
 node tools/wbcli.js xlsx   ../gahlendorf-daten/workbook.json Fehmarn.xlsx # Export für LibreOffice
+node tools/wbcli.js serial 24.11.2026                                     # Datum → Zahl (Datumszellen)
+python3 tools/tagesliste.py ../gahlendorf-daten/workbook.json tagesliste.html 2026-11-24  # Tagesliste-Seite
 ```
+Startprompts für die Chats: `docs/Startprompt_Tagesliste_Chat.txt`, `docs/Startprompt_Gahlendorf_Chat.txt`.
 
 ## Standardregeln (wie bei der Golf-PWA)
 - Bei **jeder** Code-Änderung `tests.js` anpassen; `node tests.js` muss grün sein, bevor committet wird.
 - Diese Doku aktuell halten: neue Operationen in die Tabelle oben (der Test prüft das), Changelog unten, Versionsnummer in `core.js` (`VERSION`), `index.html` (`APP_VERSION`) und `sw.js` (Cache-Name) gleich halten (der Test prüft das).
 
 ## Changelog
+## 1.0.1
+- 24.11.2026: Senden ans Daten-Repo höchstens alle 2 Minuten (sofort beim Verlassen der App / „Jetzt abgleichen“) – jeder Push ist ein Commit der ganzen Arbeitsmappe. Geräte ohne Schreib-Schlüssel sind echt „nur lesen“. Content-Security-Policy. Neu: `tools/tagesliste.py` (Tagesliste aus workbook.json), `wbcli.js serial`, Startprompts in `docs/`.
 ## 1.0.0
 - 24.11.2026: Erste Fassung. Komplette Übernahme von Fehmarn.ods v8.12 (61 Blätter, 41.892 Formeln, 54 Auswahllisten, 48 Bilder). Ansichten Start, Aufgaben (Status, Neu, Erledigt-Haken), Kosten (Kostenplan), Wissen (Suche, Neu), Finanzen, Kontakte, Entscheidungen, Berichte, alle Blätter als Tabelle mit Bearbeiten. Offline-fähig, Sync über Cloudflare Worker, Excel-Export.

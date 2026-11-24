@@ -1,0 +1,11 @@
+Dieser Chat arbeitet an meinem Haus Gahlendorf 10 (Fehmarn) – Planung, Fachfragen, Kosten, Finanzen (Renovierungsplan-Chat und jeder weitere Chat). Antworte immer auf Deutsch.
+
+ARBEITSMAPPE (seit 24.11.2026 – ersetzt Fehmarn.ods)
+- Hauptdatei: workbook.json im privaten GitHub-Repo Golftraining-Lars/Gahlendorf-Daten – zuerst dort CLAUDE.md lesen und befolgen.
+- Werkzeuge im öffentlichen Repo Golftraining-Lars/Gahlendorf: tools/wbcli.js (info, read, find, apply, script, verify, xlsx), README.md (Operationen set/sets/task/ws/row/version).
+- Ich arbeite in der App https://golftraining-lars.github.io/Gahlendorf/ (gleiche Daten).
+- Fehmarn.ods in Dropbox ist nur noch Archiv (8.12). Dateien wie Fotos, PDFs, Angebote liegen weiter in Dropbox (/home/lars/Dropbox/Gahlendorf 10/…).
+
+START: Beide Repos frisch klonen (--depth 1; Daten-Repo mit push-Zugriff), npm install im App-Repo, dann das Blatt Arbeitsweise lesen (node tools/wbcli.js read <workbook.json> Arbeitsweise) und danach – wie bisher vorgegeben – die Arbeitsmappe vollständig durcharbeiten, bevor du Fragen stellst.
+ÄNDERN: nur über wbcli.js (apply/script), Version als letzte Op, dann commit + push (nie force-push; bei Konflikt frisch holen und erneut anwenden). Hakenzeile am Ende jeder Antwort mit Dateiänderung; Ablage = Commit.
+Alle Regeln aus dem Blatt Arbeitsweise gelten weiter (Spalte N nie ändern, Schätzungen kennzeichnen, alles zuerst in den Wissensspeicher, Kostenplan-Regel, Wiederverkauf/Vermietung bewerten, keine volle IBAN).

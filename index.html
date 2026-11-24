@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Gahlendorf 10</title>
 <meta name="theme-color" content="#1f5f67">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.workers.dev; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'none'">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -144,7 +145,7 @@ label.f > *:not(span){color:var(--fg)}
 <script src="wbcodec.js"></script>
 <script>
 'use strict';
-const APP_VERSION='1.0.0';
+const APP_VERSION='1.0.1';
 const DATA_PATH='workbook.json';
 /* ============================== Speicher (IndexedDB) ============================== */
 const IDB={db:null,
@@ -155,7 +156,7 @@ const IDB={db:null,
 };
 const LS={ get(k,d){ try{ const v=localStorage.getItem('g10.'+k); return v==null?d:JSON.parse(v);}catch(e){return d} }, set(k,v){ try{localStorage.setItem('g10.'+k,JSON.stringify(v))}catch(e){} } };
 /* ============================== Zustand ============================== */
-const S={wb:null,by:{},enc:null,sha:'',journal:[],seq:0,engine:'aus',sync:'',tab:LS.get('tab','start'),
+const S={lastPush:0,forcePush:false,pushT:null,wb:null,by:{},enc:null,sha:'',journal:[],seq:0,engine:'aus',sync:'',tab:LS.get('tab','start'),
   settings:Object.assign({url:'',readKey:'',writeKey:'',who:'Lars'},LS.get('settings',{})),
   filter:LS.get('filter',{a:'offen',q:''}),pendingOps:[],saving:false,dirty:false,sheetView:null,showHidden:false};
 const $=s=>document.querySelector(s);
@@ -218,17 +219,24 @@ function optimistic(op){ const cells=op.op==='set'?{[op.c]:op.input}:op.op==='se
   // verknüpfter Status im Renovierungsplan (Formel aus Kostenplan) sofort mitziehen
   if(op.sheet==='Kostenplan'&&cells[2]!==undefined&&op.key!=null){ const rr=findRow(RP,0,op.key); if(rr>=0&&isF(RP,rr,2)) sh(RP).val[rr][2]=cells[2]; } }
 let busy=0; function setBusy(d){ busy+=d; if(S.engine==='bereit'||S.engine==='rechnet …') setEngine(busy>0?'rechnet …':'bereit'); }
-async function doOp(op){ op.who=S.settings.who||'PWA'; op.ts=Date.now(); op.seq=++S.seq; S.journal.push(op); await IDB.set('journal',S.journal);
+async function doOp(op){ if(canSync()&&!S.settings.writeKey){ toast('Dieses Gerät ist auf „nur lesen“ eingestellt (kein Schreib-Schlüssel).',4000); return null; }
+  op.who=S.settings.who||'PWA'; op.ts=Date.now(); op.seq=++S.seq; S.journal.push(op); await IDB.set('journal',S.journal);
   optimistic(op); render();
   if(S.engine!=='bereit'&&S.engine!=='rechnet …'){ S.pendingOps.push(op); toast('Gespeichert – wird eingerechnet, sobald der Rechenkern bereit ist'); return null; }
   return runOp(op); }
 async function runOp(op){ setBusy(1); try{ const m=await engineCall('op',{op}); applyInputs(m.inputs); applyChanges(m.changes); markDirty(); render(); return m.res; } finally{ setBusy(-1); } }
 async function flushPending(){ while(S.pendingOps.length){ const op=S.pendingOps.shift(); try{ await runOp(op); }catch(e){ toast('Änderung fehlgeschlagen: '+e.message,6000); } } }
 let saveT=null;
+/* Jeder Push ist ein Commit der ganzen Arbeitsmappe (~4 MB). Damit das Daten-Repo nicht unnötig wächst,
+   wird höchstens alle 2 Minuten gesendet – sofort beim Verlassen der App und mit „Jetzt abgleichen“. */
+const PUSH_EVERY=120000;
 function markDirty(){ S.dirty=true; setSync('geändert'); clearTimeout(saveT); saveT=setTimeout(saveNow,3500); }
 async function saveNow(){ if(S.saving||S.engine!=='bereit'){ if(S.dirty){ clearTimeout(saveT); saveT=setTimeout(saveNow,3000); } return; } S.saving=true; const upto=S.seq;
   try{ const m=await engineCall('snapshot',{meta:{exported:new Date().toISOString(),editedBy:S.settings.who}}); S.enc=m.wb; await IDB.set('wb',S.enc); S.dirty=false;
-    if(canSync()) await push(upto); else { setSync('lokal'); }
+    if(!canSync()){ setSync('lokal'); return; }
+    const wait=PUSH_EVERY-(Date.now()-S.lastPush);
+    if(wait>0&&!S.forcePush){ setSync('gespeichert · sendet in '+Math.ceil(wait/60000)+' Min.'); clearTimeout(S.pushT); S.pushT=setTimeout(()=>{ S.forcePush=true; saveNow(); },wait); return; }
+    S.forcePush=false; S.lastPush=Date.now(); await push(upto);
   }catch(e){ setSync('Fehler'); toast('Speichern: '+e.message,6000); } finally{ S.saving=false; } }
 /* ============================== Sync über Worker ============================== */
 const canSync=()=>!!(S.settings.url&&S.settings.readKey);
@@ -512,7 +520,7 @@ document.addEventListener('click',async e=>{ const a=e.target.closest('[data-act
   if(k==='mehr'){ const v=a.dataset.k; if(v.startsWith('blatt:')){ S.sheetView=v.slice(6); S.gridQ=''; go('blatt'); } else if(v.startsWith('bericht:')){ S.report=v.slice(8); go('bericht'); } else go(v); return; }
   if(k==='cell'){ cellDlg(a.dataset.s,Number(a.dataset.r),Number(a.dataset.c)); return; }
   if(k==='saveset'){ S.settings={url:$('#s_url').value.trim().replace(/\/+$/,''),readKey:$('#s_rk').value.trim(),writeKey:$('#s_wk').value.trim(),who:$('#s_who').value}; LS.set('settings',S.settings); toast('Gespeichert'); pull(true); return; }
-  if(k==='sync'){ pull(true); return; }
+  if(k==='sync'){ if(S.journal.length){ S.forcePush=true; saveNow(); } else pull(true); return; }
   if(k==='reset'){ if(S.journal.length&&!a.dataset.sure){ a.dataset.sure=1; a.textContent='Wirklich? '+S.journal.length+' ungesendete Änderungen gehen verloren'; return; } await IDB.del('wb'); await IDB.del('journal'); await IDB.del('sha'); location.reload(); return; }
   if(k==='export'){ exportXlsx(); return; }
 });
@@ -524,8 +532,8 @@ document.addEventListener('input',e=>{ const id=e.target.id; const deb=(fn)=>{ c
 });
 document.addEventListener('change',async e=>{ if(e.target.id==='hid'){ S.showHidden=e.target.checked; render(); }
   if(e.target.id==='imp'){ const f=e.target.files[0]; if(!f) return; const wb=JSON.parse(await f.text()); S.enc=wb.schema===2?wb:WBCodec.encode(wb); setWB(WBCodec.decode(S.enc)); await IDB.set('wb',S.enc); S.journal=[]; await IDB.set('journal',[]); render(); startEngine(); toast('Arbeitsmappe geladen'); } });
-$('#syncChip').onclick=()=>pull(true); $('#engChip').onclick=()=>toast('Rechenkern: '+S.engine);
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') pull(); else if(S.dirty) saveNow(); });
+$('#syncChip').onclick=()=>{ if(S.journal.length){ S.forcePush=true; saveNow(); } else pull(true); }; $('#engChip').onclick=()=>toast('Rechenkern: '+S.engine);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') pull(); else if(S.dirty||S.journal.length){ S.forcePush=true; saveNow(); } });
 window.addEventListener('online',()=>pull());
 /* ============================== Export ============================== */
 async function exportXlsx(){ if(!window.XLSX){ toast('Lade Export-Modul …'); await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='vendor/xlsx.full.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }

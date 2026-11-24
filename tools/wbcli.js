@@ -7,10 +7,12 @@
    node tools/wbcli.js apply   <workbook.json> <ops.json>                       (Ops-Liste, siehe README)
    node tools/wbcli.js script  <workbook.json> <skript.js>                      (module.exports = async (book,h) => {...})
    node tools/wbcli.js verify  <workbook.json>                                   (neu rechnen, mit gespeicherten Werten vergleichen)
-   node tools/wbcli.js xlsx    <workbook.json> <ziel.xlsx>                       (Export für LibreOffice/Excel)          */
+   node tools/wbcli.js xlsx    <workbook.json> <ziel.xlsx>                       (Export für LibreOffice/Excel)
+   node tools/wbcli.js serial  24.11.2026                                        (Datum → Zahl für Datumszellen)          */
 const fs=require('fs'), path=require('path');
 const G=require('../core.js'), C=require('../wbcodec.js');
 const [,,cmd,file,...rest]=process.argv;
+if(cmd==='serial'&&file){ const [d,m,y]=file.split('.').map(Number); console.log(Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/864e5)); process.exit(0); }
 if(!cmd||!file){ console.log(fs.readFileSync(__filename,'utf8').split('*/')[0]); process.exit(1); }
 const load=()=>JSON.parse(fs.readFileSync(file,'utf8'));
 const save=(book,meta)=>{ const e=book.encoded(Object.assign({exported:new Date().toISOString()},meta||{})); const tmp=file+'.tmp'; fs.writeFileSync(tmp,JSON.stringify(e)); fs.renameSync(tmp,file); return e; };
