@@ -145,8 +145,7 @@ label.f > *:not(span){color:var(--fg)}
 <script src="wbcodec.js"></script>
 <script>
 'use strict';
-const APP_VERSION='1.0.1';
-const DATA_PATH='workbook.json';
+const APP_VERSION='1.1.0';
 /* ============================== Speicher (IndexedDB) ============================== */
 const IDB={db:null,
   open(){ return this.db||(this.db=new Promise((res,rej)=>{ const q=indexedDB.open('gahlendorf',1); q.onupgradeneeded=()=>q.result.createObjectStore('kv'); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); })); },
@@ -156,7 +155,7 @@ const IDB={db:null,
 };
 const LS={ get(k,d){ try{ const v=localStorage.getItem('g10.'+k); return v==null?d:JSON.parse(v);}catch(e){return d} }, set(k,v){ try{localStorage.setItem('g10.'+k,JSON.stringify(v))}catch(e){} } };
 /* ============================== Zustand ============================== */
-const S={lastPush:0,forcePush:false,pushT:null,wb:null,by:{},enc:null,sha:'',journal:[],seq:0,engine:'aus',sync:'',tab:LS.get('tab','start'),
+const S={texts:null,base:null,photos:{},lastPush:0,forcePush:false,pushT:null,wb:null,by:{},enc:null,sha:'',journal:[],seq:0,engine:'aus',sync:'',tab:LS.get('tab','start'),
   settings:Object.assign({url:'',readKey:'',writeKey:'',who:'Lars'},LS.get('settings',{})),
   filter:LS.get('filter',{a:'offen',q:''}),pendingOps:[],saving:false,dirty:false,sheetView:null,showHidden:false};
 const $=s=>document.querySelector(s);
@@ -207,13 +206,13 @@ function startEngine(){ if(W) W.terminate(); setEngine('lädt'); W=new Worker('e
   W.onmessage=(e)=>{ const m=e.data; const w=waiters[m.id]; if(!w) return; delete waiters[m.id]; m.ok?w.res(m):w.rej(new Error(m.error)); };
   W.onerror=(e)=>{ setEngine('Fehler'); console.error(e); };
   const t=Date.now();
-  return engineCall('init',{wb:S.enc}).then(m=>{ applyChanges(m.changes); setEngine('bereit'); render(); return flushPending(); })
+  return engineCall('init',{texts:S.texts}).then(m=>{ applyChanges(m.changes); setEngine('bereit'); render(); return flushPending(); })
     .catch(err=>{ setEngine('Fehler'); toast('Rechenkern: '+err.message,6000); }); }
 function setEngine(t){ S.engine=t; $('#engTxt').textContent=t==='bereit'?'bereit':t; $('#engChip').style.opacity=t==='bereit'?.75:1; }
 function applyChanges(ch){ if(!ch) return; for(const [n,r,c,v] of ch){ const s=sh(n); if(!s) continue; while(s.val.length<=r){ s.val.push([]); s.inp.push([]); } s.val[r][c]=v; } }
 function applyInputs(inputs){ if(!inputs) return; for(const n in inputs){ const s=sh(n); if(!s) continue; s.inp=inputs[n].inp; s.val=inputs[n].val; } }
 /* ============================== Operationen + Journal ============================== */
-function optimistic(op){ const cells=op.op==='set'?{[op.c]:op.input}:op.op==='sets'?op.cells:null; if(!cells) return;
+function optimistic(op){ if(op.op==='foto'){ const f=S.wb.fotos||(S.wb.fotos={}); const L=f[op.nr]||(f[op.nr]=[]); if(!L.some(x=>x.path===op.path)) L.push({path:op.path,date:op.date,who:op.who}); return; } const cells=op.op==='set'?{[op.c]:op.input}:op.op==='sets'?op.cells:null; if(!cells) return;
   const r=op.key!=null&&GKEYS[op.sheet]!=null?findRow(op.sheet,GKEYS[op.sheet],op.key):op.r; if(r<0||r==null) return; const s=sh(op.sheet);
   for(const c in cells){ while(s.inp[r].length<=c){ s.inp[r].push(null); s.val[r].push(null); } s.inp[r][c]=cells[c]; s.val[r][c]=null; }
   // verknüpfter Status im Renovierungsplan (Formel aus Kostenplan) sofort mitziehen
@@ -227,41 +226,62 @@ async function doOp(op){ if(canSync()&&!S.settings.writeKey){ toast('Dieses Ger�
 async function runOp(op){ setBusy(1); try{ const m=await engineCall('op',{op}); applyInputs(m.inputs); applyChanges(m.changes); markDirty(); render(); return m.res; } finally{ setBusy(-1); } }
 async function flushPending(){ while(S.pendingOps.length){ const op=S.pendingOps.shift(); try{ await runOp(op); }catch(e){ toast('Änderung fehlgeschlagen: '+e.message,6000); } } }
 let saveT=null;
-/* Jeder Push ist ein Commit der ganzen Arbeitsmappe (~4 MB). Damit das Daten-Repo nicht unnötig wächst,
-   wird höchstens alle 2 Minuten gesendet – sofort beim Verlassen der App und mit „Jetzt abgleichen“. */
+/* Gesendet wird höchstens alle 2 Minuten (sofort beim Verlassen der App und mit „Jetzt abgleichen“).
+   Seit 1.1.0 enthält ein Commit nur die geänderten Blätter (eine Datei je Blatt). */
 const PUSH_EVERY=120000;
 function markDirty(){ S.dirty=true; setSync('geändert'); clearTimeout(saveT); saveT=setTimeout(saveNow,3500); }
-async function saveNow(){ if(S.saving||S.engine!=='bereit'){ if(S.dirty){ clearTimeout(saveT); saveT=setTimeout(saveNow,3000); } return; } S.saving=true; const upto=S.seq;
-  try{ const m=await engineCall('snapshot',{meta:{exported:new Date().toISOString(),editedBy:S.settings.who}}); S.enc=m.wb; await IDB.set('wb',S.enc); S.dirty=false;
+async function snapshotTexts(){ const m=await engineCall('snapshot',{meta:{exported:new Date().toISOString(),editedBy:S.settings.who}}); return m.texts; }
+async function saveNow(){ if(S.saving||S.engine!=='bereit'){ if(S.dirty||S.forcePush){ clearTimeout(saveT); saveT=setTimeout(saveNow,3000); } return; } S.saving=true; const upto=S.seq;
+  try{ if(S.dirty){ S.texts=await snapshotTexts(); await IDB.set('texts',S.texts); S.dirty=false; }
     if(!canSync()){ setSync('lokal'); return; }
+    if(!S.journal.length&&!Object.keys(S.photos).length){ setSync('synchron'); return; }
     const wait=PUSH_EVERY-(Date.now()-S.lastPush);
     if(wait>0&&!S.forcePush){ setSync('gespeichert · sendet in '+Math.ceil(wait/60000)+' Min.'); clearTimeout(S.pushT); S.pushT=setTimeout(()=>{ S.forcePush=true; saveNow(); },wait); return; }
     S.forcePush=false; S.lastPush=Date.now(); await push(upto);
-  }catch(e){ setSync('Fehler'); toast('Speichern: '+e.message,6000); } finally{ S.saving=false; } }
+  }catch(e){ setSync(navigator.onLine?'Fehler':'offline'); toast('Speichern: '+e.message,6000); console.warn(e); } finally{ S.saving=false; } }
 /* ============================== Sync über Worker ============================== */
+/* Zustand im Speicher (IndexedDB):
+   texts      – aktueller lokaler Stand je Datei (meta.json, sheets/*.json), inkl. ungesendeter Änderungen
+   base       – {commit, shas:{pfad:blobSha}, texts:{…}} = Stand im Repo, auf dem die lokalen Änderungen aufsetzen
+   journal    – noch nicht gesendete Operationen (werden bei Konflikt auf die frische Fassung erneut angewandt)
+   photos     – noch nicht gesendete Fotos {pfad: base64} */
 const canSync=()=>!!(S.settings.url&&S.settings.readKey);
 function setSync(t){ S.sync=t; $('#syncTxt').textContent=t||'–'; }
 function hdrs(extra){ return Object.assign({'X-Read-Key':S.settings.readKey},extra||{}); }
-function b64utf8(str){ const b=new TextEncoder().encode(str); let s=''; for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(s); }
-async function remoteSha(){ const r=await fetch(S.settings.url+'?sha=1&path='+encodeURIComponent(DATA_PATH),{headers:hdrs(),cache:'no-store'}); const j=await r.json(); if(!j.ok) throw new Error(j.error||r.status); return j.sha; }
-async function remoteFetch(){ const r=await fetch(S.settings.url+'?fresh=1&path='+encodeURIComponent(DATA_PATH),{headers:hdrs(),cache:'no-store'}); if(!r.ok) throw new Error('Laden '+r.status); const sha=r.headers.get('X-Repo-Sha')||''; const wb=await r.json(); return {wb,sha}; }
+async function wget(q){ const r=await fetch(S.settings.url+q,{headers:hdrs(),cache:'no-store'}); if(!r.ok){ let e='HTTP '+r.status; try{ e=(await r.json()).error||e; }catch(_){} throw new Error(e); } return r; }
+async function manifest(){ const j=await (await wget('?manifest=1')).json(); if(!j.ok) throw new Error(j.error); return j; }
+async function fetchText(path,ref){ return (await wget('?fresh=1&path='+encodeURIComponent(path)+(ref?'&ref='+ref:''))).text(); }
+/* Frischen Stand holen: nur Dateien laden, deren Kennung sich geändert hat */
+async function fetchRemote(m){ const texts={}; const old=S.base||{shas:{},texts:{}};
+  if(!m.files['meta.json']&&m.files['workbook.json']){ // Altbestand (App 1.0.x): eine große Datei → aufteilen
+    const wb=JSON.parse(await fetchText('workbook.json',m.commit)); const t=WBCodec.splitTexts(WBCodec.encodeSplit(wb)); return {commit:m.commit,shas:{},texts:t,legacy:true}; }
+  const want=Object.keys(m.files).filter(p=>p==='meta.json'||p.startsWith('sheets/'));
+  let n=0; for(const p of want){ if(old.shas[p]===m.files[p]&&old.texts[p]!=null){ texts[p]=old.texts[p]; continue; } setSync('lädt '+(++n)+' …'); texts[p]=await fetchText(p,m.commit); }
+  return {commit:m.commit,shas:m.files,texts}; }
+async function adopt(base){ S.base=base; await IDB.set('base',base); }
 async function push(upto,attempt){ attempt=attempt||0; if(!S.settings.writeKey){ setSync('nur lesen'); return; }
   setSync('sendet …');
-  const body=b64utf8(JSON.stringify(S.enc));
-  const r=await fetch(S.settings.url,{method:'POST',headers:hdrs({'X-Write-Key':S.settings.writeKey,'X-Path':DATA_PATH,'X-Base-Sha':S.sha||'','X-Encoding':'base64','Content-Type':'text/plain'}),body});
-  if(r.status===409&&attempt<3){ setSync('gleicht ab …'); const fr=await remoteFetch(); await rebase(fr); return push(S.seq,attempt+1); }
+  const files=[]; for(const p in S.texts){ if(S.base.texts[p]!==S.texts[p]) files.push({path:p,text:S.texts[p]}); }
+  for(const p in S.photos) files.push({path:p,base64:S.photos[p]});
+  if(!files.length){ S.journal=S.journal.filter(o=>o.seq>upto); await IDB.set('journal',S.journal); setSync('synchron'); return; }
+  const names=files.map(f=>f.path.replace(/^sheets\//,'').replace(/\.json$/,'')).join(', ');
+  const body=JSON.stringify({base:S.base.commit,message:'App ('+(S.settings.who||'?')+'): '+names.slice(0,200),files});
+  const r=await fetch(S.settings.url+'?commit=1',{method:'POST',headers:hdrs({'X-Write-Key':S.settings.writeKey,'Content-Type':'application/json'}),body});
+  if(r.status===409&&attempt<3){ setSync('gleicht ab …'); await pull(true,true); return push(S.seq,attempt+1); }
   const j=await r.json().catch(()=>({})); if(!r.ok||!j.ok) throw new Error(j.error||('HTTP '+r.status));
-  S.sha=j.sha||r.headers.get('X-Repo-Sha')||S.sha; await IDB.set('sha',S.sha);
+  for(const p in S.photos){ await IDB.set('img:'+p,'data:image/jpeg;base64,'+S.photos[p]); } S.photos={}; await IDB.set('photos',{});
+  const m=await manifest(); await adopt({commit:j.commit,shas:m.commit===j.commit?m.files:{},texts:Object.assign({},S.texts)});
   S.journal=S.journal.filter(o=>o.seq>upto); await IDB.set('journal',S.journal); setSync(S.journal.length?'geändert':'synchron'); }
-async function rebase(fr){ // frische Fassung + eigene, noch nicht gesendete Ops
-  S.enc=fr.wb; S.sha=fr.sha; setWB(WBCodec.decode(fr.wb)); await startEngine();
+async function rebase(base){ // frische Fassung + eigene, noch nicht gesendete Ops
+  await adopt(base); S.texts=Object.assign({},base.texts); setWB(WBCodec.fromTexts(S.texts)); await startEngine();
   for(const op of S.journal){ try{ await engineCall('op',{op}); }catch(e){ console.warn('Op nicht anwendbar',op,e); } }
-  const m=await engineCall('snapshot',{meta:{exported:new Date().toISOString()}}); S.enc=m.wb; setWB(WBCodec.decode(S.enc)); await IDB.set('wb',S.enc); await IDB.set('sha',S.sha); render(); }
-async function pull(force){ if(!canSync()) return; try{ setSync('prüft …'); const sha=await remoteSha();
-    if(sha&&sha===S.sha&&!force){ setSync(S.journal.length?'geändert':'synchron'); if(S.journal.length) saveNow(); return; }
-    setSync('lädt …'); const fr=await remoteFetch();
-    if(S.journal.length){ await rebase(fr); await push(S.seq); }
-    else { S.enc=fr.wb; S.sha=fr.sha; await IDB.set('wb',S.enc); await IDB.set('sha',S.sha); setWB(WBCodec.decode(fr.wb)); render(); startEngine(); setSync('synchron'); }
+  S.texts=await snapshotTexts(); await IDB.set('texts',S.texts); setWB(WBCodec.fromTexts(S.texts)); render(); }
+async function pull(force,noPush){ if(!canSync()) return; try{ setSync('prüft …'); const m=await manifest();
+    if(S.base&&m.commit===S.base.commit&&!force){ setSync(S.journal.length?'geändert':'synchron'); if(S.journal.length||Object.keys(S.photos).length){ S.forcePush=true; saveNow(); } return; }
+    if(S.base&&m.commit===S.base.commit&&force&&!S.journal.length){ setSync('synchron'); return; }
+    const base=await fetchRemote(m);
+    if(S.journal.length){ await rebase(base); if(!noPush) await push(S.seq); }
+    else { await adopt(base); S.texts=Object.assign({},base.texts); await IDB.set('texts',S.texts); setWB(WBCodec.fromTexts(S.texts)); render(); startEngine(); setSync('synchron'); }
   }catch(e){ setSync(navigator.onLine?'Fehler':'offline'); console.warn(e); } }
 /* ============================== Navigation ============================== */
 function go(tab,arg){ S.tab=tab; LS.set('tab',tab); if(tab==='blatt') S.sheetView=arg||S.sheetView; render(); window.scrollTo(0,0); }
@@ -294,29 +314,41 @@ async function setStatus(nr,st,extra){ const t=statusTarget(nr); const cells={[t
   await doOp({op:'sets',sheet:t.sheet,key:t.key,cells}); }
 /* ============================== Ansichten ============================== */
 const VIEWS={};
-VIEWS.start=()=>{ const ts=tasks(); const open=ts.filter(x=>x.st==='offen'||x.st==='läuft');
-  const over=open.filter(x=>x.amp==='überfällig').length, now=open.filter(x=>x.amp==='jetzt anstoßen').length, soon=open.filter(x=>x.amp==='bald').length;
-  const focus=open.filter(x=>x.prio===1).sort(sortDue).slice(0,12);
-  const fr=[]; const n=rowsOf('Fristen'); for(let r=1;r<n;r++){ const d=V('Fristen',r,0), was=V('Fristen',r,1), erl=V('Fristen',r,4); if(typeof d==='number'&&was&&erl!=='ja'&&d>=todaySerial()-1) fr.push({r,d,was,typ:V('Fristen',r,2),amp:V('Fristen',r,6)}); }
+/* Zeilen über ihre Beschriftung finden statt über feste Positionen – Ansichten bleiben richtig,
+   auch wenn ein Chat oder Lars oben Zeilen einfügt. */
+function rowByLabel(n,col,label,starts){ const s=sh(n); if(!s) return -1; for(let r=0;r<s.inp.length;r++){ const v=V(n,r,col); if(v==null) continue; const t=String(v).trim(); if(starts?t.startsWith(label):t===label) return r; } return -1; }
+function byLabel(n,col,label,valCol,starts){ const r=rowByLabel(n,col,label,starts); return r<0?null:V(n,r,valCol); }
+const KPV={ verfuegbar:()=>byLabel('Kostenplan',12,'Summe verfügbar',13), netto:()=>byLabel('Kostenplan',12,'Eingeplant (ja)',13,true), puffer:()=>byLabel('Kostenplan',12,'Puffer',13,true), ampel:()=>byLabel('Kostenplan',12,'Ampel',13),
+  brutto:()=>{ const n='Kostenplan'; let t=0; const s=sh(n); if(!s) return null; for(let r=0;r<s.inp.length;r++){ const q=V(n,r,8); if(typeof q==='string'&&/^(Q\d\/\d{4}|\d{4}\+|ohne Quartal)$/.test(q.trim())){ const v=V(n,r,11); if(typeof v==='number') t+=v; } } return t; } };
+const FIN={ liquide:()=>byLabel('Finanzen Überblick',0,'→ liquide gesamt',1), nachKauf:()=>byLabel('Finanzen Überblick',0,'→ liquide nach Kaufabschluss',1),
+  frei:()=>byLabel('Finanzen Überblick',0,'gemeinsam',1), tiefst:()=>byLabel('Finanzen Überblick',0,'Tiefster Kontostand',1) };
+/* Start = Tagesliste (ersetzt die frühere separate Tagesliste-Seite) */
+VIEWS.start=()=>{ const ts=tasks(); const open=ts.filter(x=>x.st==='offen'||x.st==='läuft'); const T=todaySerial();
+  const own=r=>V(RP,r,25);
+  const heute=open.filter(x=>own(x.r)===T).sort((a,b)=>(a.prio||9)-(b.prio||9)||a.nr-b.nr); const hset=new Set(heute.map(x=>x.nr));
+  const ueber=open.filter(x=>!hset.has(x.nr)&&typeof x.due==='number'&&x.due<=T).sort((a,b)=>(a.prio||9)-(b.prio||9)||a.due-b.due);
+  const woche=open.filter(x=>!hset.has(x.nr)&&typeof x.due==='number'&&x.due>T&&x.due<=T+7).sort((a,b)=>(a.prio||9)-(b.prio||9)||a.due-b.due);
+  const fr=[]; for(let r=1;r<rowsOf('Fristen');r++){ const d=V('Fristen',r,0), was=V('Fristen',r,1), erl=V('Fristen',r,4); if(typeof d==='number'&&was&&erl!=='ja'&&d>=T&&d<=T+7) fr.push({r,d,was,typ:V('Fristen',r,2),bem:V('Fristen',r,7)}); }
   fr.sort((a,b)=>a.d-b.d);
-  const ent=[]; const en=rowsOf('Entscheidungen'); for(let r=2;r<en;r++){ if(V('Entscheidungen',r,0)==='offen') ent.push({thema:V('Entscheidungen',r,1),txt:V('Entscheidungen',r,2),st:V('Entscheidungen',r,3)}); }
-  const kp=sh('Kostenplan'); const kpR=kp?findRow('Kostenplan',12,'Puffer'):-1;
+  const wa=[]; for(let r=1;r<rowsOf('Regelmäßige Wartung');r++){ const st=String(V('Regelmäßige Wartung',r,9)||''); if(/überfällig|bald/.test(st)) wa.push({id:V('Regelmäßige Wartung',r,0),t:V('Regelmäßige Wartung',r,2),st,r}); }
+  const ent=[]; for(let r=2;r<rowsOf('Entscheidungen');r++){ if(V('Entscheidungen',r,0)==='offen') ent.push({thema:V('Entscheidungen',r,1),txt:V('Entscheidungen',r,2),st:V('Entscheidungen',r,3)}); }
+  const WT=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag']; const d=new Date();
+  const list=(arr,lim,more)=>arr.length?`<div class="list">${arr.slice(0,lim).map(x=>taskItem(x,true)).join('')}</div>${arr.length>lim?`<div class="toolbar" style="margin-top:8px"><button class="btn" data-act="filtgo" data-k="${more}">alle ${arr.length} anzeigen</button></div>`:''}`:'<div class="empty">Nichts offen.</div>';
   return `${banner()}
-  <div class="grid2">
-   <div class="card kpi ${over?'bad':''}"><div class="l">überfällig</div><div class="v">${over}</div></div>
-   <div class="card kpi ${now?'warn':''}"><div class="l">jetzt anstoßen</div><div class="v">${now}</div></div>
-   <div class="card kpi"><div class="l">bald fällig (14 Tage)</div><div class="v">${soon}</div></div>
-   <div class="card kpi"><div class="l">offen / in Arbeit</div><div class="v">${open.length}</div></div>
-  </div>
+  <div class="card" style="margin-bottom:12px"><div class="small muted">Tagesliste</div><div style="font-size:20px;font-weight:650">${WT[d.getDay()]}, ${p2(d.getDate())}.${p2(d.getMonth()+1)}.${d.getFullYear()}</div>
+   <div class="meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><span class="amp überfällig">${heute.length} mit Termin heute</span><span class="amp überfällig">${ueber.length} überfällig · ${ueber.filter(x=>x.prio===1).length} Prio 1</span><span class="amp bald">${woche.length} in 7 Tagen</span><span class="amp ok">${fr.length} Termine</span></div></div>
+  ${fr.length?`<h2>Termine &amp; Fristen · 7 Tage</h2><div class="list">${fr.map(f=>`<div class="item" data-act="sheet" data-s="Fristen"><div class="nr">${WT[dateOf(f.d).getUTCDay()].slice(0,2)} ${fdate(f.d).slice(0,6)}</div><div class="main"><div class="t">${esc(f.was)}</div>${f.bem?`<div class="small muted clamp">${esc(f.bem)}</div>`:''}<div class="meta"><span>${esc(f.typ||'')}</span></div></div></div>`).join('')}</div>`:''}
+  ${heute.length?`<h2>Heute (fester Termin)</h2>${list(heute,40,'offen')}`:''}
+  <h2>Überfällig</h2>${list(ueber,12,'ueber')}
+  <h2>Diese Woche fällig</h2>${list(woche,12,'offen')}
+  ${wa.length?`<h2>Wartung</h2><div class="list">${wa.map(w=>`<div class="item" data-act="sheet" data-s="Regelmäßige Wartung"><div class="nr">${esc(w.id)}</div><div class="main"><div class="t">${esc(w.t)}</div><div class="meta"><span class="amp ${/überfällig/.test(w.st)?'überfällig':'bald'}">${esc(w.st)}</span></div></div></div>`).join('')}</div>`:''}
   <h2>Geld</h2><div class="grid2">
-   ${kpi('liquide heute',V('Finanzen Überblick',7,1),0)}${kpi('nach Kaufabschluss',V('Finanzen Überblick',10,1),0)}
-   ${kpi('Renovierung eingeplant (netto)',V('Kostenplan',9,13),0,'')}${kpi('Puffer Renovierung',V('Kostenplan',10,13),0)}
-   ${kpi('tiefster Kontostand (gemeinsam)',V('Finanzen Überblick',21,1),0)}${kpi('frei pro Monat jetzt (gemeinsam)',V('Finanzen Überblick',14,1),0)}
+   ${kpi('liquide heute',FIN.liquide(),0)}${kpi('nach Kaufabschluss',FIN.nachKauf(),0)}
+   ${kpi('Renovierung eingeplant (netto)',KPV.netto(),0)}${kpi('Puffer Renovierung',KPV.puffer(),0)}
+   ${kpi('tiefster Kontostand (gemeinsam)',FIN.tiefst(),0)}${kpi('frei pro Monat jetzt (gemeinsam)',FIN.frei(),0)}
   </div>
-  <h2>Fokus · Prio 1</h2><div class="list">${focus.map(x=>taskItem(x,true)).join('')||'<div class="empty">Keine offenen Prio-1-Aufgaben.</div>'}</div>
-  <h2>Nächste Fristen</h2><div class="list">${fr.slice(0,8).map(f=>`<div class="item" data-act="sheet" data-s="Fristen"><div class="nr">${fdate(f.d).slice(0,6)}</div><div class="main"><div class="t">${esc(f.was)}</div><div class="meta"><span>${esc(f.typ||'')}</span>${f.amp?`<span class="amp ${ampCls(f.amp)}">${esc(f.amp)}</span>`:''}</div></div></div>`).join('')||'<div class="empty">Keine.</div>'}</div>
   <h2>Offene Entscheidungen</h2><div class="list">${ent.map(x=>`<div class="item" data-act="tab" data-t="entsch"><div class="main"><div class="t">${esc(x.thema)}</div><div class="small muted clamp">${esc(x.txt)}</div><div class="meta"><span>${esc(x.st)}</span></div></div></div>`).join('')}</div>
-  <h2>Stand der Dinge</h2><div class="list"><div class="item" data-act="bericht" data-s="Stand der Dinge"><div class="main"><div class="t">Startblatt „Stand der Dinge“ öffnen</div><div class="small muted">Fokus, Termine, Themen in Kürze</div></div></div>
+  <h2>Mehr</h2><div class="list"><div class="item" data-act="bericht" data-s="Stand der Dinge"><div class="main"><div class="t">Stand der Dinge</div><div class="small muted">Fokus, Termine, Themen in Kürze</div></div></div>
   <div class="item" data-act="bericht" data-s="Arbeitsweise"><div class="main"><div class="t">Arbeitsweise</div><div class="small muted">Regeln für Änderungen (auch für Claude)</div></div></div></div>`; };
 function kpi(l,v,d,cls){ const n=typeof v==='number'; return `<div class="card kpi ${n&&v<0?'bad':''}"><div class="l">${esc(l)}</div><div class="v">${n?feur(v,d):esc(fmtVal(v))}</div></div>`; }
 function todaySerial(){ const d=new Date(); return Math.round((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-Date.UTC(1899,11,30))/864e5); }
@@ -362,7 +394,10 @@ function taskDlg(nr){ const r=findRow(RP,0,nr); if(r<0) return; const t=statusTa
    <div class="k">Kosten Stand</div><div class="v">${esc(feur(V(RP,r,10)))}</div><div class="k">Etappe</div><div class="v">${esc(V(RP,r,18))||'–'}</div>
    ${kpr>=0?`<div class="k">Kostenplan</div><div class="v">Paket ${esc(V('Kostenplan',kpr,4))} · einplanen: ${esc(V('Kostenplan',kpr,5)||'–')} · ${esc(V('Kostenplan',kpr,6)||'')} · ${esc(F('Kostenplan',kpr,7))}</div>`:''}
    <div class="k">Erledigt am</div><div class="v">${esc(F(RP,r,15))||'–'}</div></div>
+   <h2 style="margin:6px 0 0">Fotos</h2><div class="imgs" id="tfotos" data-nr="${nr}"></div>
+   <label class="btn" style="align-self:flex-start">📷 Foto hinzufügen<input type="file" id="fotoIn" data-nr="${nr}" accept="image/*" capture="environment" hidden></label>
    ${ws.length?`<h2 style="margin:6px 0 0">Wissen (${ws.length})</h2><div class="list ws">${ws.slice(-12).reverse().map(i=>wsItem(i)).join('')}</div>`:''}`;
+  setTimeout(()=>loadTaskFotos(nr),0);
   const d=openDlg(`Nr. ${nr}`,body,`<button class="btn" data-act="ws-for" data-nr="${nr}">+ Wissen</button><button class="btn" data-act="sheet-row" data-s="${RP}" data-r="${r}">Im Blatt</button><button class="btn primary" id="sv">Speichern</button>`);
   d.querySelector('#sv').onclick=async()=>{ const st=d.querySelector('#st').value; const bd=d.querySelector('.bd'); const cells=collectFields(RP,r,bd); const stCh=st!==V(RP,r,2); d.close();
     if(stCh&&t.sheet===RP){ await setStatus(nr,st,{sheet:RP,cells}); }
@@ -381,14 +416,16 @@ function newTaskDlg(){ const gl=listFor(RP,5,5)||[]; const al=listFor(RP,5,6)||[
 /* ============================== Kosten ============================== */
 const KP='Kostenplan';
 VIEWS.kosten=()=>{ if(!sh(KP)) return '<div class="empty">Kein Kostenplan.</div>';
-  const pk=[]; for(let r=4;r<=8;r++) pk.push(r);
-  const rows=[]; const n=rowsOf(KP); for(let r=19;r<n;r++){ const nr=V(KP,r,0); if(typeof nr==='number') rows.push(r); }
+  const hdr=rowByLabel(KP,0,'Nr.'); const top=rowByLabel(KP,0,'Paket'); const n=rowsOf(KP);
+  const pk=[]; for(let r=top+1;r<(hdr<0?n:hdr);r++){ const v=V(KP,r,0); if(typeof v==='number'&&v>=1&&v<=9) pk.push(r); }
+  const qs=[]; for(let r=top+1;r<(hdr<0?n:hdr);r++){ const q=V(KP,r,8); if(typeof q==='string'&&/^(Q\d\/\d{4}|\d{4}\+|ohne Quartal)$/.test(q.trim())) qs.push(r); }
+  const rows=[]; for(let r=hdr+1;r<n;r++){ const nr=V(KP,r,0); if(typeof nr==='number') rows.push(r); }
   const f=S.filter.k||'ja'; const flt={ja:r=>V(KP,r,5)==='ja'&&V(KP,r,2)!=='entfällt',spaeter:r=>V(KP,r,5)==='später'&&V(KP,r,2)!=='entfällt',nein:r=>V(KP,r,5)==='nein'||V(KP,r,2)==='entfällt',alle:r=>true};
   const sel=rows.filter(flt[f]||flt.ja);
-  const ver=[]; for(let r=4;r<=12;r++){ const l=V(KP,r,12); if(l) ver.push([l,r]); }
-  return `${banner()}<div class="grid2">${kpi('eingeplant brutto',V(KP,9,11),0)}${kpi('eingeplant netto',V(KP,9,9),0)}${kpi('verfügbar',V(KP,8,13),0)}${kpi('Puffer',V(KP,10,13),0)}</div>
+  const ver=[]; for(let r=top+1;r<(hdr<0?n:hdr);r++){ const l=V(KP,r,12); const x=V(KP,r,13); if(l&&x!=null&&x!=='') ver.push([l,r]); }
+  return `${banner()}<div class="grid2">${kpi('eingeplant brutto',KPV.brutto(),0)}${kpi('eingeplant netto (nach Förderung)',KPV.netto(),0)}${kpi('verfügbar',KPV.verfuegbar(),0)}${kpi('Puffer',KPV.puffer(),0)}</div>
   <h2>Pakete</h2><div class="card"><div class="report">${pk.map(r=>`<div class="row"><div class="a"><b>${esc(V(KP,r,0))}</b> ${esc(V(KP,r,1))}</div><div class="b">${esc(F(KP,r,5))}<div class="small muted">von ${esc(F(KP,r,2))}</div></div></div>`).join('')}</div></div>
-  <h2>Quartale (eingeplant brutto)</h2><div class="card"><div class="report">${[4,5,6,7,8,9].map(r=>`<div class="row"><div class="a">${esc(V(KP,r,8))}</div><div class="b">${esc(F(KP,r,11))}</div></div>`).join('')}</div></div>
+  <h2>Quartale (eingeplant brutto)</h2><div class="card"><div class="report">${qs.map(r=>`<div class="row"><div class="a">${esc(V(KP,r,8))}</div><div class="b">${esc(F(KP,r,11))}</div></div>`).join('')}</div></div>
   <h2>Verfügbar</h2><div class="card"><div class="report">${ver.map(([l,r])=>`<div class="row"><div class="a">${esc(l)}</div><div class="b">${esc(F(KP,r,13))}</div></div>`).join('')}</div></div>
   <h2>Maßnahmen</h2><div class="seg toolbar">${[['ja','eingeplant'],['spaeter','später'],['nein','abgewählt/entfällt'],['alle','alle']].map(([k,l])=>`<button data-act="kfilt" data-k="${k}" class="${f===k?'on':''}">${l}</button>`).join('')}</div>
   <div class="list">${sel.map(r=>`<div class="item" data-act="kp" data-r="${r}"><div class="nr">${esc(V(KP,r,0))}</div><div class="main"><div class="t clamp">${esc(V(KP,r,1))}</div>
@@ -430,7 +467,23 @@ VIEWS.mehr=()=>{ const items=[['finanzen','Finanzen','Überblick, Konten, Progno
   return `<div class="sheets">${items.map(([k,l,s])=>`<button data-act="mehr" data-k="${esc(k)}"><b>${esc(l)}</b><span class="small muted">${esc(s)}</span></button>`).join('')}</div>
    <h2>Alle Blätter (${names.length})</h2><div class="toolbar"><label class="small"><input type="checkbox" id="hid" ${S.showHidden?'checked':''}> ausgeblendete zeigen</label></div>
    <div class="sheets">${names.map(s=>`<button data-act="mehr" data-k="blatt:${esc(s.name)}">${esc(s.name)}${s.hidden?' <span class="small muted">(ausgeblendet)</span>':''}</button>`).join('')}</div>`; };
-VIEWS.finanzen=()=>`${banner()}<div class="card report">${reportHTML('Finanzen Überblick')}</div><h2>Weitere Blätter</h2><div class="sheets">${['Budget','Einmalzahlungen & Kredite','Liquidität','Konto Ist','Förderung','Nachweis Bank','Laufende Kosten','Finanzplan'].map(n=>`<button data-act="mehr" data-k="blatt:${esc(n)}">${esc(n)}</button>`).join('')}</div>`;
+VIEWS.finanzen=()=>`${banner()}${chartsHTML()}<div class="card report" style="margin-top:12px">${reportHTML('Finanzen Überblick')}</div><h2>Weitere Blätter</h2><div class="sheets">${['Budget','Einmalzahlungen & Kredite','Liquidität','Konto Ist','Förderung','Nachweis Bank','Laufende Kosten','Finanzplan'].map(n=>`<button data-act="mehr" data-k="blatt:${esc(n)}">${esc(n)}</button>`).join('')}</div>`;
+/* Diagramme der früheren ODS (Kontostand-Prognose) als SVG – Daten direkt aus den Blättern */
+function seriesBlock(n,xCol,cols){ const s=sh(n); if(!s) return null; let r0=-1; for(let r=0;r<s.inp.length;r++){ const x=V(n,r,xCol); if(typeof x==='number'&&x>40000&&x<60000&&cols.every(c=>typeof V(n,r,c)==='number')){ r0=r; break; } }
+  if(r0<0) return null; const rows=[]; for(let r=r0;r<s.inp.length;r++){ const x=V(n,r,xCol); if(!(typeof x==='number'&&x>40000)) break; rows.push(r); }
+  return {x:rows.map(r=>V(n,r,xCol)),ys:cols.map(c=>({name:String(V(n,r0-1,c)||colStr(c)),v:rows.map(r=>V(n,r,c))}))}; }
+function lineChart(title,d){ if(!d||!d.x.length) return ''; const W=640,H=250,L=58,R=12,T=14,B=34; const all=d.ys.flatMap(y=>y.v).filter(v=>typeof v==='number');
+  let lo=Math.min(0,...all), hi=Math.max(...all); const step=Math.pow(10,Math.floor(Math.log10((hi-lo)||1)))*((hi-lo)/Math.pow(10,Math.floor(Math.log10((hi-lo)||1)))>5?2:1); lo=Math.floor(lo/step)*step; hi=Math.ceil(hi/step)*step;
+  const X=i=>L+(W-L-R)*(d.x.length<2?0:i/(d.x.length-1)), Y=v=>T+(H-T-B)*(1-(v-lo)/((hi-lo)||1)); const cols=['var(--accent)','var(--warn)','var(--bad)'];
+  let g=''; for(let v=lo;v<=hi+1e-9;v+=step){ g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="${v===0?1.6:1}"/><text x="${L-6}" y="${Y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${nf(0).format(v/1000)} T€</text>`; }
+  d.x.forEach((x,i)=>{ if(i%3===0||i===d.x.length-1){ const dt=dateOf(x); g+=`<text x="${X(i)}" y="${H-12}" text-anchor="middle" font-size="11" fill="var(--muted)">${MON[dt.getUTCMonth()]} ${String(dt.getUTCFullYear()).slice(2)}</text>`; } });
+  const lines=d.ys.map((y,k)=>`<polyline fill="none" stroke="${cols[k]}" stroke-width="2.4" stroke-linejoin="round" points="${y.v.map((v,i)=>X(i)+','+Y(v)).join(' ')}"/>`).join('');
+  const minI=d.ys.map(y=>{ let m=0; y.v.forEach((v,i)=>{ if(v<y.v[m]) m=i; }); return m; });
+  const marks=d.ys.map((y,k)=>`<circle cx="${X(minI[k])}" cy="${Y(y.v[minI[k]])}" r="4" fill="${cols[k]}"/>`).join('');
+  return `<div class="card"><div style="font-weight:650;margin-bottom:4px">${esc(title)}</div><div class="meta" style="display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:4px">${d.ys.map((y,k)=>`<span><span class="dot" style="color:${cols[k]}"></span> ${esc(y.name)} · tiefster Stand ${feur(y.v[minI[k]])} (${MON[dateOf(d.x[minI[k]]).getUTCMonth()]} ${dateOf(d.x[minI[k]]).getUTCFullYear()})</span>`).join('')}</div>
+   <div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:420px;height:auto" role="img" aria-label="${esc(title)}">${g}${lines}${marks}</svg></div></div>`; }
+function chartsHTML(){ const a=seriesBlock('Finanzplan',0,[6,14]); const b=seriesBlock('Liquidität',0,[6]);
+  return lineChart('Kontostand-Prognose (Variante alles): gemeinsam / Lars allein',a)+(b?'<div style="height:10px"></div>'+lineChart('Kontostand (gewählte Variante im Blatt Liquidität)',b):''); }
 VIEWS.bericht=()=>`<div class="toolbar"><button class="btn" data-act="mehr" data-k="blatt:${esc(S.report)}">Als Tabelle</button></div><div class="card report">${reportHTML(S.report)}</div>`;
 function reportHTML(n){ const s=sh(n); if(!s) return ''; let h=''; const W=Math.max(...s.inp.map(r=>r.length),1);
   for(let r=0;r<s.inp.length;r++){ if(s.hiddenRows&&s.hiddenRows.includes(r)) continue; const cells=[]; for(let c=0;c<W;c++){ if(s.hiddenCols&&s.hiddenCols.includes(c)) continue; const t=F(n,r,c); if(t!=='') cells.push([c,t]); }
@@ -458,9 +511,9 @@ VIEWS.einst=()=>{ const s=S.settings; return `<div class="card" style="display:f
    <label class="f"><span>Wer arbeitet auf diesem Gerät? (erscheint im Änderungsprotokoll)</span><select id="s_who">${['Lars','Mio'].map(o=>`<option ${s.who===o?'selected':''}>${o}</option>`).join('')}</select></label>
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="saveset">Speichern & verbinden</button><button class="btn" data-act="sync">Jetzt abgleichen</button></div></div>
    <h2>Daten</h2><div class="card" style="display:flex;flex-direction:column;gap:10px">
-   <div class="kv small"><div class="k">Datenstand</div><div class="v">${esc((S.wb&&S.wb.exported)||'–')}</div><div class="k">Version (Übersicht B3)</div><div class="v">${esc(V('Übersicht',2,1)||'–')}</div><div class="k">Kennung (SHA)</div><div class="v">${esc((S.sha||'–').slice(0,12))}</div>
+   <div class="kv small"><div class="k">Datenstand</div><div class="v">${esc((S.wb&&S.wb.exported)||'–')}</div><div class="k">Version (Übersicht B3)</div><div class="v">${esc(V('Übersicht',2,1)||'–')}</div><div class="k">Stand im Repo</div><div class="v">${esc(((S.base&&S.base.commit)||'–').slice(0,10))}</div>
    <div class="k">Nicht gesendet</div><div class="v">${S.journal.length} Änderung(en)</div><div class="k">Rechenkern</div><div class="v">${esc(S.engine)}</div><div class="k">App</div><div class="v">${APP_VERSION}</div></div>
-   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="export">Als Excel-Datei exportieren</button><label class="btn">Arbeitsmappe laden (workbook.json)<input type="file" id="imp" accept=".json,application/json" hidden></label>
+   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="export">Als Excel-Datei exportieren</button><label class="btn">Arbeitsmappe laden (JSON)<input type="file" id="imp" accept=".json,application/json" hidden></label>
    <button class="btn danger" data-act="reset">Lokale Daten löschen</button></div>
    <div class="small muted">Die Excel-Datei enthält alle Blätter mit Formeln und lässt sich in LibreOffice öffnen und als .ods speichern – als Sicherung oder für den Notfall.</div></div>`; };
 /* ============================== Tabellenansicht (alle Blätter) ============================== */
@@ -469,6 +522,18 @@ VIEWS.blatt=()=>{ const n=S.sheetView; const s=sh(n); if(!s) return '<div class=
   return `<div class="toolbar"><button class="btn" data-act="tab" data-t="mehr">‹ Blätter</button><b style="flex:1;min-width:0;overflow-wrap:anywhere;font-size:16px">${esc(n)}</b></div><div class="toolbar"><input type="search" id="gq" placeholder="in diesem Blatt suchen" value="${esc(S.gridQ||'')}"></div>
    ${imgs.length?`<div class="imgs" id="imgs" data-s="${esc(n)}"></div>`:''}<div class="tablewrap" id="tw"><table class="g" id="gt"></table></div>`; };
 const RH=31;
+/* Bedingte Farben (aus der ODS übernommen bzw. sinngemäß): Prio-Farbskala, gestrichene Kosten, Status und Ampeln */
+function mix(a,b,t){ const h=x=>[1,3,5].map(i=>parseInt(x.slice(i,i+2),16)); const A=h(a),B=h(b); return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join(''); }
+function prioColor(v){ if(typeof v!=='number') return null; v=Math.max(1,Math.min(10,v)); return v<=5?mix('#f8696b','#ffeb84',(v-1)/4):mix('#ffeb84','#63be7b',(v-5)/5); }
+const AMPC={'überfällig':['#f6dcd8','#9b2c24'],'jetzt anstoßen':['#f6e6d3','#8a4b12'],'bald':['#e4e9f3','#2b3a5a'],'ok':['#dcecd6','#2f5f2b'],'erledigt':['#dcecd6','#2f5f2b'],'Datum fehlt':['#efe9df','#6b6f6c']};
+const STC={'offen':['#e4e9f3','#2b3a5a'],'läuft':['#d9ebe9','#1f5f67'],'erledigt':['#dcecd6','#2f5f2b'],'entfällt':['#efe9df','#6b6f6c']};
+function condStyle(n,r,c){ if(r===0) return '';
+  if((n==='Renovierungsplan'||n==='Nach Etappe (automatisch)')&&c===3){ const col=prioColor(V(n,r,c)); return col?`background:${col};color:#222;`:''; }
+  if(n==='Renovierungsplan'&&c===2){ const x=STC[V(n,r,c)]; return x?`background:${x[0]};color:${x[1]};`:''; }
+  if((n==='Renovierungsplan'&&c===28)||(n==='Fristen'&&c===6)||(n==='Nach Etappe (automatisch)'&&c===14)){ const x=AMPC[V(n,r,c)]; return x?`background:${x[0]};color:${x[1]};`:''; }
+  if(n==='Kosten'){ const ai=V(n,r,34), ak=String(V(n,r,36)||''); if(ai==='gestrichen'||ak.startsWith('nein – Aufgabe entfällt')) return 'color:#8a8f8c;text-decoration:line-through;'; }
+  if(n==='Kostenplan'&&c===2&&r>0){ const x=STC[V(n,r,c)]; return x?`background:${x[0]};color:${x[1]};`:''; }
+  return ''; }
 function gridAfter(){ const n=S.sheetView; const s=sh(n); const tw=$('#tw'); if(!tw) return; loadImgs(n);
   const W=Math.max(1,...s.inp.map(r=>r.length)); const cols=[]; for(let c=0;c<W;c++){ if(s.hiddenCols&&s.hiddenCols.includes(c)) continue; cols.push(c); }
   const hid=new Set(s.hiddenRows||[]); let rows=[]; for(let r=0;r<s.inp.length;r++) if(!hid.has(r)) rows.push(r);
@@ -479,13 +544,23 @@ function gridAfter(){ const n=S.sheetView; const s=sh(n); const tw=$('#tw'); if(
     if(i0>0) html+=`<tr style="height:${i0*RH}px"><td colspan="${cols.length+1}" style="border:0;background:none"></td></tr>`;
     for(let i=i0;i<i1;i++){ const r=rows[i]; html+=`<tr><td class="rh">${r+1}</td>`;
       for(const c of cols){ const t=F(n,r,c); const f=isF(n,r,c); const st=s.sty[r+','+c]&&S.wb.styles[s.sty[r+','+c]]; const v=V(n,r,c);
-        const css=(st&&st.bg?`background:${st.bg};color:${st.fg||'#222'};`:(st&&st.fg?`color:${st.fg};`:''))+(st&&st.b?'font-weight:650;':'')+(typeof v==='number'?'text-align:right;':'')+(typeof v==='number'&&v<0?'color:var(--bad);':'');
+        const css=(st&&st.bg?`background:${st.bg};color:${st.fg||'#222'};`:(st&&st.fg?`color:${st.fg};`:''))+(st&&st.b?'font-weight:650;':'')+(typeof v==='number'?'text-align:right;':'')+(typeof v==='number'&&v<0?'color:var(--bad);':'')+condStyle(n,r,c);
         html+=`<td class="${f?'f ':''}${s.dv[r+','+c]?'dv':''}" data-r="${r}" data-c="${c}" style="min-width:${width(c)}px;max-width:${width(c)}px;${css}" title="${esc(t.length>40?t:'')}">${esc(t)}</td>`; }
       html+='</tr>'; }
     if(i1<rows.length) html+=`<tr style="height:${(rows.length-i1)*RH}px"><td colspan="${cols.length+1}" style="border:0;background:none"></td></tr>`;
     $('#gt').innerHTML=html+'</tbody>'; };
   draw(); let raf=0; tw.onscroll=()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(draw); };
   $('#gt').onclick=e=>{ const td=e.target.closest('td[data-r]'); if(td) cellDlg(n,Number(td.dataset.r),Number(td.dataset.c)); }; }
+/* Fotos an Aufgaben: verkleinern (max. 1600 px, JPEG), lokal vormerken, mit dem nächsten Commit senden */
+async function imgURL(p){ if(S.photos[p]) return 'data:image/jpeg;base64,'+S.photos[p]; let u=await IDB.get('img:'+p); if(u) return u; if(!canSync()) return null;
+  try{ const r=await wget('?fresh=1&path='+encodeURIComponent(p)); const b=await r.blob(); u=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(b); }); await IDB.set('img:'+p,u); return u; }catch(e){ return null; } }
+async function loadTaskFotos(nr){ const box=document.getElementById('tfotos'); if(!box) return; const L=((S.wb.fotos||{})[nr])||[]; box.innerHTML=L.length?'':'<span class="small muted">Noch keine Fotos.</span>';
+  for(const f of L){ const u=await imgURL(f.path); if(!u||!document.getElementById('tfotos')) continue; const im=document.createElement('img'); im.src=u; im.alt=f.path; im.title=(f.date||'')+' '+(f.who||''); im.onclick=()=>window.open(u,'_blank'); box.appendChild(im); } }
+async function addFoto(file,nr){ const bmp=await createImageBitmap(file); const k=Math.min(1,1600/Math.max(bmp.width,bmp.height)); const c=document.createElement('canvas'); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height); const b64=c.toDataURL('image/jpeg',0.82).split(',')[1];
+  const d=new Date(); const ts=d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+'-'+p2(d.getHours())+p2(d.getMinutes())+p2(d.getSeconds());
+  const path='bilder/aufgaben/'+nr+'-'+ts+'.jpg'; S.photos[path]=b64; await IDB.set('photos',S.photos);
+  await doOp({op:'foto',nr:Number(nr),path,date:p2(d.getDate())+'.'+p2(d.getMonth()+1)+'.'+d.getFullYear()}); loadTaskFotos(nr); toast('Foto gespeichert – wird mit dem nächsten Abgleich gesendet'); }
 async function loadImgs(n){ const box=$('#imgs'); if(!box) return; const list=(S.wb.images&&S.wb.images[n])||[];
   for(const p of list){ let url=await IDB.get('img:'+p); if(!url&&canSync()){ try{ const r=await fetch(S.settings.url+'?fresh=1&path='+encodeURIComponent(p),{headers:hdrs()}); if(r.ok){ const b=await r.blob(); url=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(b); }); await IDB.set('img:'+p,url); } }catch(e){} }
     if(url&&$('#imgs')){ const im=document.createElement('img'); im.src=url; im.alt=p; im.onclick=()=>openDlg(esc(n),`<img src="${url}" style="width:100%;border-radius:8px">`); box.appendChild(im); } } }
@@ -507,6 +582,7 @@ document.addEventListener('click',async e=>{ const a=e.target.closest('[data-act
   if(k==='close'){ $('#dlg').close(); return; }
   if(k==='done'){ e.stopPropagation(); const nr=Number(a.dataset.nr); a.style.background='var(--ok-soft)'; await setStatus(nr,'erledigt'); toast('Nr. '+nr+' erledigt'); return; }
   if(k==='task'){ e.preventDefault(); taskDlg(Number(a.dataset.nr)); return; }
+  if(k==='filtgo'){ S.filter.a=a.dataset.k; S.filter.q=''; LS.set('filter',S.filter); go('aufgaben'); return; }
   if(k==='filt'){ S.filter.a=a.dataset.k; LS.set('filter',S.filter); render(); return; }
   if(k==='kfilt'){ S.filter.k=a.dataset.k; LS.set('filter',S.filter); render(); return; }
   if(k==='kp'){ kpDlg(Number(a.dataset.r)); return; }
@@ -530,8 +606,9 @@ document.addEventListener('input',e=>{ const id=e.target.id; const deb=(fn)=>{ c
   if(id==='cq'){ S.filter.c=e.target.value; deb(()=>{ render(); const q=$('#cq'); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }); }
   if(id==='gq'){ S.gridQ=e.target.value; deb(()=>{ gridAfter(); }); }
 });
-document.addEventListener('change',async e=>{ if(e.target.id==='hid'){ S.showHidden=e.target.checked; render(); }
-  if(e.target.id==='imp'){ const f=e.target.files[0]; if(!f) return; const wb=JSON.parse(await f.text()); S.enc=wb.schema===2?wb:WBCodec.encode(wb); setWB(WBCodec.decode(S.enc)); await IDB.set('wb',S.enc); S.journal=[]; await IDB.set('journal',[]); render(); startEngine(); toast('Arbeitsmappe geladen'); } });
+document.addEventListener('change',async e=>{ if(e.target.id==='fotoIn'&&e.target.files[0]){ try{ await addFoto(e.target.files[0],e.target.dataset.nr); }catch(err){ toast('Foto: '+err.message,5000); } e.target.value=''; return; }
+  if(e.target.id==='hid'){ S.showHidden=e.target.checked; render(); }
+  if(e.target.id==='imp'){ const f=e.target.files[0]; if(!f) return; const wb=JSON.parse(await f.text()); S.texts=WBCodec.splitTexts(WBCodec.encodeSplit(wb)); setWB(WBCodec.fromTexts(S.texts)); await IDB.set('texts',S.texts); S.journal=[]; await IDB.set('journal',[]); render(); startEngine(); toast('Arbeitsmappe geladen'); } });
 $('#syncChip').onclick=()=>{ if(S.journal.length){ S.forcePush=true; saveNow(); } else pull(true); }; $('#engChip').onclick=()=>toast('Rechenkern: '+S.engine);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') pull(); else if(S.dirty||S.journal.length){ S.forcePush=true; saveNow(); } });
 window.addEventListener('online',()=>pull());
@@ -547,11 +624,12 @@ async function exportXlsx(){ if(!window.XLSX){ toast('Lade Export-Modul …'); a
 /* ============================== Start ============================== */
 async function boot(){
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
-  S.journal=(await IDB.get('journal'))||[]; S.seq=S.journal.reduce((m,o)=>Math.max(m,o.seq||0),0); S.sha=(await IDB.get('sha'))||'';
-  const enc=await IDB.get('wb');
-  if(enc){ S.enc=enc; setWB(WBCodec.decode(enc)); render(); startEngine(); setSync(canSync()?'…':'lokal'); pull(); }
+  S.journal=(await IDB.get('journal'))||[]; S.seq=S.journal.reduce((m,o)=>Math.max(m,o.seq||0),0);
+  S.base=(await IDB.get('base'))||null; S.photos=(await IDB.get('photos'))||{}; S.texts=(await IDB.get('texts'))||null;
+  if(!S.texts){ const old=await IDB.get('wb'); if(old){ S.texts=WBCodec.splitTexts(WBCodec.encodeSplit(old)); await IDB.set('texts',S.texts); await IDB.del('wb'); await IDB.del('sha'); } } // Übernahme aus App 1.0.x
+  if(S.texts){ setWB(WBCodec.fromTexts(S.texts)); render(); if(!S.base&&canSync()){ setSync('…'); await pull(true); } else { startEngine(); setSync(canSync()?'…':'lokal'); pull(); } }
   else if(canSync()){ await pull(true); if(!S.wb) $('#view').innerHTML='<div class="empty">Keine Daten geladen. Verbindung prüfen.</div>'+VIEWS.einst(); }
-  else { S.tab='einst'; $('#view').innerHTML='<div class="banner">Willkommen. Bitte Verbindung eintragen oder eine workbook.json laden.</div>'+VIEWS.einst(); setEngine('aus'); setSync('lokal'); }
+  else { S.tab='einst'; $('#view').innerHTML='<div class="banner">Willkommen. Bitte Verbindung eintragen oder eine Arbeitsmappe (JSON) laden.</div>'+VIEWS.einst(); setEngine('aus'); setSync('lokal'); }
 }
 boot();
 </script>

@@ -1,25 +1,32 @@
 #!/usr/bin/env node
 /* Werkzeug für die Claude-Chats (und Notfälle): Arbeitsmappe ohne App bearbeiten.
    Nutzt DENSELBEN Kern wie die App (core.js) – gleiche Ops, gleiche Formeln.
-   node tools/wbcli.js info    <workbook.json>
-   node tools/wbcli.js read    <workbook.json> <Blatt> [vonZeile bisZeile]     (Zeilen 1-basiert)
-   node tools/wbcli.js find    <workbook.json> <Blatt> <Text>
-   node tools/wbcli.js apply   <workbook.json> <ops.json>                       (Ops-Liste, siehe README)
-   node tools/wbcli.js script  <workbook.json> <skript.js>                      (module.exports = async (book,h) => {...})
-   node tools/wbcli.js verify  <workbook.json>                                   (neu rechnen, mit gespeicherten Werten vergleichen)
-   node tools/wbcli.js xlsx    <workbook.json> <ziel.xlsx>                       (Export für LibreOffice/Excel)
+   <daten> = Ordner des Daten-Repos (meta.json + sheets/) – oder eine einzelne JSON-Datei
+   node tools/wbcli.js split   <daten> <ordner>                         (Altformat → eine Datei je Blatt)
+   node tools/wbcli.js info    <daten>
+   node tools/wbcli.js read    <daten> <Blatt> [vonZeile bisZeile]     (Zeilen 1-basiert)
+   node tools/wbcli.js find    <daten> <Blatt> <Text>
+   node tools/wbcli.js apply   <daten> <ops.json>                       (Ops-Liste, siehe README)
+   node tools/wbcli.js script  <daten> <skript.js>                      (module.exports = async (book,h) => {...})
+   node tools/wbcli.js verify  <daten>                                   (neu rechnen, mit gespeicherten Werten vergleichen)
+   node tools/wbcli.js xlsx    <daten> <ziel.xlsx>                       (Export für LibreOffice/Excel)
    node tools/wbcli.js serial  24.11.2026                                        (Datum → Zahl für Datumszellen)          */
 const fs=require('fs'), path=require('path');
 const G=require('../core.js'), C=require('../wbcodec.js');
 const [,,cmd,file,...rest]=process.argv;
 if(cmd==='serial'&&file){ const [d,m,y]=file.split('.').map(Number); console.log(Math.round((Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/864e5)); process.exit(0); }
 if(!cmd||!file){ console.log(fs.readFileSync(__filename,'utf8').split('*/')[0]); process.exit(1); }
-const load=()=>JSON.parse(fs.readFileSync(file,'utf8'));
-const save=(book,meta)=>{ const e=book.encoded(Object.assign({exported:new Date().toISOString()},meta||{})); const tmp=file+'.tmp'; fs.writeFileSync(tmp,JSON.stringify(e)); fs.renameSync(tmp,file); return e; };
+// <ziel> = Ordner des Daten-Repos (meta.json + sheets/) oder eine einzelne JSON-Datei (Altformat/Export)
+const isDir=()=>fs.existsSync(file)&&fs.statSync(file).isDirectory();
+const load=()=>{ if(isDir()){ const meta=JSON.parse(fs.readFileSync(path.join(file,'meta.json'),'utf8')); const files={}; for(const o of meta.order) files[o.file]=JSON.parse(fs.readFileSync(path.join(file,o.file),'utf8')); return {meta,files}; } return JSON.parse(fs.readFileSync(file,'utf8')); };
+const save=(book,meta)=>{ const m=Object.assign({exported:new Date().toISOString()},meta||{});
+  if(isDir()){ const t=C.splitTexts(book.split(m)); let n=0; for(const p in t){ const fp=path.join(file,p); const old=fs.existsSync(fp)?fs.readFileSync(fp,'utf8'):null; if(old!==t[p]){ fs.mkdirSync(path.dirname(fp),{recursive:true}); fs.writeFileSync(fp+'.tmp',t[p]); fs.renameSync(fp+'.tmp',fp); n++; } } console.error('geänderte Dateien:',n); return; }
+  const e=book.encoded(m); fs.writeFileSync(file+'.tmp',JSON.stringify(e)); fs.renameSync(file+'.tmp',file); };
 const fmt=v=>v==null?'':(typeof v==='object'&&v.e?v.e:String(v));
 (async()=>{
-  if(cmd==='info'){ const w=C.decode(load()); console.log('Version',w.sheets.find(s=>s.name==='Übersicht').inp[2][1],'· exportiert',w.exported); for(const s of w.sheets) console.log((s.hidden?'  (ausgeblendet) ':'  ')+s.name+' · '+s.inp.length+' Zeilen'); return; }
-  if(cmd==='read'||cmd==='find'){ const w=C.decode(load()); const s=w.sheets.find(x=>x.name===rest[0]); if(!s) throw new Error('Blatt fehlt');
+  if(cmd==='split'){ const t=C.splitTexts(C.encodeSplit(load())); for(const p in t){ const fp=path.join(rest[0],p); fs.mkdirSync(path.dirname(fp),{recursive:true}); fs.writeFileSync(fp,t[p]); } console.log(Object.keys(t).length,'Dateien'); return; }
+  if(cmd==='info'){ const w=C.decodeAny(load()); console.log('Version',w.sheets.find(s=>s.name==='Übersicht').inp[2][1],'· exportiert',w.exported); for(const s of w.sheets) console.log((s.hidden?'  (ausgeblendet) ':'  ')+s.name+' · '+s.inp.length+' Zeilen'); return; }
+  if(cmd==='read'||cmd==='find'){ const w=C.decodeAny(load()); const s=w.sheets.find(x=>x.name===rest[0]); if(!s) throw new Error('Blatt fehlt');
     const show=(r)=>console.log((r+1)+'\t'+s.inp[r].map((x,c)=>typeof x==='string'&&x[0]==='='?'ƒ'+fmt(s.val[r][c]):fmt(x)).join('\t'));
     if(cmd==='read'){ const a=Number(rest[1]||1)-1, b=Number(rest[2]||s.inp.length)-1; for(let r=a;r<=b&&r<s.inp.length;r++) show(r); }
     else { const q=String(rest[1]).toLowerCase(); s.inp.forEach((row,r)=>{ if(row.some((x,c)=>String(typeof x==='string'&&x[0]==='='?fmt(s.val[r][c]):fmt(x)).toLowerCase().includes(q))) show(r); }); }

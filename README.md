@@ -4,7 +4,7 @@ Progressive Web App für Renovierung, Kosten, Finanzen und Wissen rund um Gahlen
 **Seit 24.11.2026 ersetzt sie die Arbeitsmappe `Fehmarn.ods`** (letzte ODS-Version 8.12, Entscheidung Lars).
 
 - **App (dieses Repo, öffentlich):** nur Code, keine Daten. Läuft über GitHub Pages.
-- **Daten (Repo `Gahlendorf-Daten`, privat):** `workbook.json` (komplette Arbeitsmappe: alle 61 Blätter, Formeln, Werte, Formate, Auswahllisten) und `bilder/`.
+- **Daten (Repo `Gahlendorf-Daten`, privat):** seit 1.1.0 **eine Datei je Blatt**: `meta.json` (Reihenfolge der Blätter, Formate, Auswahllisten, Bilder-Zuordnung, Fotos zu Aufgaben) und `sheets/<blatt>.json` (Eingaben, Formeln, letzte Werte); dazu `bilder/` (Bilder aus der ODS) und `bilder/aufgaben/` (Fotos aus der App). Bis 1.0.x lag alles in einer `workbook.json`.
 - **Sync:** Cloudflare Worker `gahlendorf-sync` (Ordner `worker/`) – liest und schreibt das private Repo, **Lesen und Schreiben nur mit Schlüssel**.
 
 > Datenschutz: In dieses Repo gehören **nie** echte Daten (auch keine Test-Kopie). `tests.js` arbeitet mit einer synthetischen Mini-Arbeitsmappe; der Abgleich mit echten Daten läuft nur lokal über `GAHLENDORF_DATA=…`.
@@ -17,7 +17,7 @@ Progressive Web App für Renovierung, Kosten, Finanzen und Wissen rund um Gahlen
 | `engine-worker.js` | Rechenkern im Hintergrund (Web Worker) |
 | `engine.js` | HyperFormula + Zusatzfunktionen, damit die ODS-Formeln **unverändert** wie in LibreOffice rechnen |
 | `core.js` | Arbeitsmappe im Rechenkern: Operationen, Protokoll, Schnappschuss – gemeinsam für App, Tests und Chat-Werkzeug |
-| `wbcodec.js` | Kompaktes Speicherformat (Formeln relativ kodiert, Vorlagen + Läufe je Spalte) |
+| `wbcodec.js` | Kompaktes Speicherformat (Formeln relativ kodiert, Vorlagen + Läufe je Spalte); `encodeSplit`/`fromTexts` = eine Datei je Blatt |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Installierbar, App-Hülle offline |
 | `tools/wbcli.js` | Kommandozeile für die Claude-Chats (gleiche Ops wie die App) |
 | `tools/build_data.sh` (+ `ods_extras.py`, `ods_images.py`, `ods2json.js`) | Einmaliger Import aus einer `.ods` (Migration / Notfall) |
@@ -40,21 +40,23 @@ Jede Änderung ist eine Operation. Sie wird lokal ausgeführt, im Journal gespei
 | `task` | `fields:{B:…, D:…, F:…, Z:Datum …}` | neue Aufgabe im Renovierungsplan: letzte Aufgabenzeile mit Formeln kopieren, H N P AD Z Y W leeren, C=offen, T=beide, O=Lars, nächste freie Nr. |
 | `ws` | `fields:{inhalt, nr, thema, typ, quelle, status, aufgabe}` | neuer Wissensspeicher-Eintrag mit nächster W-Nummer und heutigem Datum |
 | `row` | `sheet, col, fields:{Spalte:Wert}, copyFormulas` | neue Zeile am Blattende (z. B. Kontakte) |
+| `foto` | `nr, path, date` | Foto zu einer Aufgabe (Datei `bilder/aufgaben/<nr>-<zeit>.jpg`, Liste in `meta.json` → `fotos`) |
 | `version` | `to, date, by` | Versionspflege wie bisher: Übersicht B3/C3, Legende A1, Arbeitsweise B12, Stand der Dinge A1 |
 
 Jede Operation schreibt ins Blatt **Aenderungsprotokoll** (`[Lars] …`, `[Mio] …`, `[Renovierungsplan-Chat] …`).
 
 **Regel aus der Arbeitsweise (18.11.2026) bleibt:** Status und „erledigt am“ von Maßnahmen, die im Kostenplan stehen, werden nur im Kostenplan geändert. Die App macht das automatisch: Ändert man den Status einer solchen Aufgabe, schreibt sie in den Kostenplan (Spalten C/D).
 
-### Sync (wie bei der Golf-PWA, „SHA-Türsteher“)
-1. Laden: `GET ?fresh=1&path=workbook.json` mit `X-Read-Key` → Inhalt + `X-Repo-Sha`.
-2. Speichern: lokal 3,5 s nach der letzten Änderung; ans Repo höchstens alle 2 Minuten bzw. sofort beim Verlassen der App: Schnappschuss → `POST` mit `X-Write-Key`, `X-Base-Sha`, Inhalt als Base64 (`X-Encoding: base64`, spart dem Worker CPU-Zeit).
-3. `409` = jemand anderes (anderes Gerät, Claude-Chat) hat inzwischen geschrieben → frische Fassung holen, eigene Ops aus dem Journal erneut anwenden, wieder senden.
-4. Beim Öffnen und bei Rückkehr in die App wird die Kennung geprüft und ggf. neu geladen.
+### Sync (Worker v2, „Git-Tree-Commit“)
+1. `GET ?manifest=1` → aktueller Commit + Kennung (Blob-SHA) jeder Datei. Die App lädt nur Dateien, deren Kennung sich geändert hat (`?fresh=1&path=…&ref=<commit>`).
+2. Speichern: lokal 3,5 s nach der letzten Änderung (IndexedDB); ans Repo höchstens alle 2 Minuten bzw. sofort beim Verlassen der App / „Jetzt abgleichen“.
+3. `POST ?commit=1` mit `{base, message, files:[{path,text}|{path,base64}]}` – nur die geänderten Blätter (+ neue Fotos). Der Worker baut daraus **einen** Commit (Blobs → Tree → Commit → Ref ohne force).
+4. `409` = inzwischen hat jemand anderes committet (anderes Gerät, Claude-Chat) → frische Fassung holen, eigene Ops aus dem Journal erneut anwenden, wieder senden.
+5. Übernahme aus 1.0.x: Die App wandelt eine lokale bzw. entfernte `workbook.json` automatisch ins neue Format um.
 
 ## Einrichtung (einmalig)
 1. **GitHub-Token** (github.com → Settings → Developer settings → Fine-grained tokens): nur Repo `Gahlendorf-Daten`, Berechtigung *Contents: Read and write*.
-2. **Cloudflare Worker** (dash.cloudflare.com → Workers & Pages → Create → Worker `gahlendorf-sync`): Inhalt von `worker/worker.js` einfügen, Deploy. Unter *Settings → Variables and Secrets* drei **Secrets** anlegen: `GITHUB_TOKEN` (Token aus 1), `READ_KEY` und `WRITE_KEY` (je eine lange Zufallszeichenkette, z. B. 40 Zeichen aus einem Passwortmanager).
+2. **Cloudflare Worker** (bei Updates nur den Code ersetzen und *Deploy*) (dash.cloudflare.com → Workers & Pages → Create → Worker `gahlendorf-sync`): Inhalt von `worker/worker.js` einfügen, Deploy. Unter *Settings → Variables and Secrets* drei **Secrets** anlegen: `GITHUB_TOKEN` (Token aus 1), `READ_KEY` und `WRITE_KEY` (je eine lange Zufallszeichenkette, z. B. 40 Zeichen aus einem Passwortmanager).
 3. **GitHub Pages** für dieses Repo: Settings → Pages → *Deploy from a branch* → `main` / `(root)`.
 4. **App öffnen** (`https://golftraining-lars.github.io/Gahlendorf/`), *Mehr → Einstellungen*: Worker-Adresse, Lese- und Schreib-Schlüssel, Name → *Speichern & verbinden*. Danach „Zum Startbildschirm hinzufügen“.
 5. Auf Mios Gerät genauso, mit Name „Mio“ (Schreib-Schlüssel leer lassen = nur lesen).
@@ -77,6 +79,8 @@ Startprompts für die Chats: `docs/Startprompt_Tagesliste_Chat.txt`, `docs/Start
 - Diese Doku aktuell halten: neue Operationen in die Tabelle oben (der Test prüft das), Changelog unten, Versionsnummer in `core.js` (`VERSION`), `index.html` (`APP_VERSION`) und `sw.js` (Cache-Name) gleich halten (der Test prüft das).
 
 ## Changelog
+## 1.1.0
+- 24.11.2026: **Eine Datei je Blatt** + Worker v2 (ein Commit mit nur den geänderten Blättern über die Git-Daten-API) – das Daten-Repo wächst nur noch um echte Änderungen. **Start = Tagesliste** (Heute, Überfällig, Diese Woche, Termine 7 Tage, Wartung, Entscheidungen). **Diagramme** Kontostand-Prognose (Finanzen). **Bedingte Farben** in der Tabellenansicht (Prio-Farbskala, Status, Ampeln, gestrichene Kosten). **Fotos an Aufgaben** (verkleinert, offline vorgemerkt). Ansichten finden Kostenplan-/Finanzzeilen über Beschriftungen statt fester Positionen; Protokoll zeigt Datumsangaben als TT.MM.JJJJ. `wbcli.js` und `tagesliste.py` lesen/schreiben den Daten-Ordner.
 ## 1.0.1
 - 24.11.2026: Senden ans Daten-Repo höchstens alle 2 Minuten (sofort beim Verlassen der App / „Jetzt abgleichen“) – jeder Push ist ein Commit der ganzen Arbeitsmappe. Geräte ohne Schreib-Schlüssel sind echt „nur lesen“. Content-Security-Policy. Neu: `tools/tagesliste.py` (Tagesliste aus workbook.json), `wbcli.js serial`, Startprompts in `docs/`.
 ## 1.0.0

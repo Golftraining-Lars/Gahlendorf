@@ -8,7 +8,7 @@ function changesOf(list){ const out=[]; if(!list) return out;
     const name=book.hf.getSheetName(a.sheet); let v=ch.newValue; if(v&&typeof v==='object'&&'type' in v) v={e:v.value}; out.push([name,a.row,a.col,v===undefined?null:v]); }
   return out; }
 self.onmessage=async(e)=>{ const {id,cmd}=e.data; try{
-  if(cmd==='init'){ ready=false; const t=Date.now(); book=new GCore.Book(e.data.wb); book.build(); hook(); ready=true;
+  if(cmd==='init'){ ready=false; const t=Date.now(); book=new GCore.Book(e.data.texts?WBCodec.fromTexts(e.data.texts):e.data.wb); book.build(); hook(); ready=true;
     // Werte, die vom gespeicherten Stand abweichen (z. B. HEUTE()), sofort melden
     const diff=[]; for(const s of book.wb.sheets){ const id_=book.sid(s.name); const vals=book.hf.getSheetValues(id_);
       s.inp.forEach((row,r)=>row.forEach((x,c)=>{ if(typeof x==='string'&&x[0]==='='){ let v=vals[r]&&vals[r][c]; if(v&&typeof v==='object'&&'type' in v) v={e:v.value}; v=v===undefined?null:v; const o=s.val[r][c];
@@ -20,7 +20,7 @@ self.onmessage=async(e)=>{ const {id,cmd}=e.data; try{
     const op=e.data.op; const touched=new Set(['Aenderungsprotokoll']); if(op.sheet) touched.add(op.sheet);
     if(op.op==='task') touched.add('Renovierungsplan'); if(op.op==='ws') touched.add('Wissensspeicher');
     postMessage({id,ok:true,res,changes:collected,inputs:dump([...touched])}); collected=[]; return; }
-  if(cmd==='snapshot'){ postMessage({id,ok:true,wb:book.encoded(e.data.meta||{})}); return; }
+  if(cmd==='snapshot'){ postMessage({id,ok:true,texts:WBCodec.splitTexts(book.split(e.data.meta||{}))}); return; }
   throw new Error('unbekannt: '+cmd);
  }catch(err){ postMessage({id,ok:false,error:String(err&&err.message||err)}); } };
 // Kompletter Stand aller Blätter (Eingaben + Werte) – für die Oberfläche nach einer Op.

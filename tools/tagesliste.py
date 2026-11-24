@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
 """Erzeugt die Tagesliste Gahlendorf 10 als HTML-Seite aus workbook.json (Daten-Repo).
 Nachfolger von tagesliste_generator.py (las früher Fehmarn.ods) – Layout und Logik unverändert.
-Aufruf: python3 tools/tagesliste.py <workbook.json> <ausgabe.html> [YYYY-MM-DD]
+Aufruf: python3 tools/tagesliste.py <Daten-Ordner (meta.json + sheets/) | workbook.json> <ausgabe.html> [YYYY-MM-DD]
 Benötigt pandas. Liest die gespeicherten Werte (die App bzw. wbcli.js rechnen sie bei jedem Speichern neu)."""
 import sys, html, json, datetime as dt, warnings
 import pandas as pd
 warnings.filterwarnings('ignore')
 src, out = sys.argv[1], sys.argv[2]
 today = pd.Timestamp(sys.argv[3]) if len(sys.argv) > 3 else pd.Timestamp(dt.date.today())
-WB = json.load(open(src, encoding='utf-8'))
+import os
+if os.path.isdir(src):
+    _meta = json.load(open(os.path.join(src, 'meta.json'), encoding='utf-8'))
+    def _sheet(name):
+        o = next(x for x in _meta['order'] if x['name'] == name)
+        return json.load(open(os.path.join(src, o['file']), encoding='utf-8'))
+else:
+    WB = json.load(open(src, encoding='utf-8'))
+    def _sheet(name): return next(x for x in WB['sheets'] if x['name'] == name)
 def _grid(name):
-    s = next(x for x in WB['sheets'] if x['name'] == name)
+    s = _sheet(name)
     R = max(len(s['k']), len(s['v']), max([f[2]+1 for f in s['frm']] or [0]))
     C = max([len(r) for r in s['k']] + [len(r) for r in s['v']] + [f[0]+1 for f in s['frm']] + [1])
     g = [[None]*C for _ in range(R)]

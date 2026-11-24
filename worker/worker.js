@@ -1,99 +1,102 @@
 /* =====================================================================
- *  GAHLENDORF-SYNC-WORKER v1.0 (Cloudflare Worker) – Kopie des Golf-Workers v2.12,
- *  angepasst für PRIVATE Daten:
- *   · Daten liegen im PRIVATEN Repo (CFG.REPO). Der Worker liest mit dem Token.
- *   · ANDERS als beim Golf-Worker braucht hier auch das LESEN einen Schlüssel
- *     (X-Read-Key = READ_KEY). Sonst könnte jeder mit der Worker-Adresse
- *     Finanzen, Grundbuch und Kontakte abrufen.
- *   · Schreiben wie beim Golf-Worker: SHA-Türsteher, Client merged lokal (409).
- *   · Erlaubt: workbook.json und Bilder unter bilder/ (nur lesen).
+ *  GAHLENDORF-SYNC-WORKER v2.0 (Cloudflare Worker)
+ *  ---------------------------------------------------------------
+ *  NEU IN v2.0 (24.11.2026): Die Arbeitsmappe liegt als EINE DATEI JE BLATT im
+ *  privaten Repo (meta.json + sheets/*.json, App ab 1.1.0). Gespeichert wird mit
+ *  EINEM Commit über die Git-Daten-API (Blobs → Tree → Commit → Ref), der nur die
+ *  geänderten Blätter enthält. Das Repo wächst dadurch nur um das, was sich
+ *  wirklich ändert – vorher war jeder Speichervorgang ein 4-MB-Commit.
+ *
+ *  SICHERHEIT (unverändert gegenüber v1):
+ *   · Daten im PRIVATEN Repo; LESEN und SCHREIBEN nur mit Schlüssel
+ *     (X-Read-Key = READ_KEY, X-Write-Key = WRITE_KEY), Vergleich in konstanter Zeit.
+ *   · Schreibbar nur: meta.json, sheets/*.json, bilder/aufgaben/* (Fotos).
+ *   · Konfliktschutz: Der Ref wird OHNE force gesetzt. Hat inzwischen jemand
+ *     anderes committet (anderes Gerät, Claude-Chat), antwortet der Worker 409 –
+ *     die App holt dann frisch und wendet ihre Änderungen erneut an.
+ *
  *  ENDPUNKTE
- *   GET  ?sha=1[&path=]     -> {ok,sha}
- *   GET  ?fresh=1[&path=]   -> Rohinhalt + X-Repo-Sha
- *   POST (X-Path, X-Base-Sha, X-Write-Key) -> {ok,sha} | 409
- *  KONFIG (Wrangler-Secrets): GITHUB_TOKEN, READ_KEY, WRITE_KEY
- *   Token: fine-grained, NUR Repo Gahlendorf-Daten, Contents: Read and write.
+ *   GET  ?manifest=1             -> {ok, commit, files:{pfad: blobSha}}
+ *   GET  ?fresh=1&path=…[&ref=]  -> Rohinhalt der Datei (Stand ref bzw. main)
+ *   POST ?commit=1  Body JSON {base, message, files:[{path, text}|{path, base64}|{path, delete:true}]}
+ *                               -> {ok, commit} | 409
+ *  KONFIG (Secrets): GITHUB_TOKEN (fine-grained, nur Gahlendorf-Daten, Contents RW),
+ *                    READ_KEY, WRITE_KEY
  * ===================================================================== */
 const CFG = {
   REPO: "Golftraining-Lars/Gahlendorf-Daten",
   BRANCH: "main",
   ORIGINS: ["https://golftraining-lars.github.io", "http://localhost:8080", "http://127.0.0.1:8080"],
-  WRITE_PATHS: ["workbook.json"],
-  READ_PREFIX: ["workbook.json", "bilder/"],
+  WRITE: [/^meta\.json$/, /^sheets\/[a-z0-9-]+\.json$/, /^bilder\/aufgaben\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|webp)$/],
+  READ: [/^meta\.json$/, /^sheets\/[a-z0-9-]+\.json$/, /^bilder\/[A-Za-z0-9._\/-]+$/, /^workbook\.json$/, /^images\.json$/],
   MAX_BYTES: 25 * 1024 * 1024
 };
 const cfg = (env, k) => (env && env[k]) || CFG[k] || "";
+const API = p => `https://api.github.com/repos/${CFG.REPO}${p}`;
 function cors(req) {
   const o = req.headers.get("Origin") || "";
-  return {
-    "Access-Control-Allow-Origin": CFG.ORIGINS.includes(o) ? o : CFG.ORIGINS[0],
+  return { "Access-Control-Allow-Origin": CFG.ORIGINS.includes(o) ? o : CFG.ORIGINS[0],
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type,X-Read-Key,X-Write-Key,X-Path,X-Base-Sha,X-Force,X-Encoding",
-    "Access-Control-Expose-Headers": "X-Repo-Sha",
-    "Vary": "Origin"
-  };
+    "Access-Control-Allow-Headers": "Content-Type,X-Read-Key,X-Write-Key",
+    "Access-Control-Expose-Headers": "X-Repo-Commit", "Vary": "Origin" };
 }
-const gh = (env, accept) => ({ "Authorization": "Bearer " + cfg(env, "GITHUB_TOKEN"), "Accept": accept,
+const gh = (env, accept) => ({ "Authorization": "Bearer " + cfg(env, "GITHUB_TOKEN"), "Accept": accept || "application/vnd.github+json",
   "User-Agent": "gahlendorf-sync-worker", "X-GitHub-Api-Version": "2022-11-28" });
-function okPath(p, list) { return typeof p === "string" && !p.includes("..") && !p.startsWith("/") && list.some(x => x.endsWith("/") ? p.startsWith(x) : p === x); }
+const ok = (p, list) => typeof p === "string" && !p.includes("..") && list.some(re => re.test(p));
 function same(a, b) { if (!a || !b || a.length !== b.length) return false; let x = 0; for (let i = 0; i < a.length; i++) x |= a.charCodeAt(i) ^ b.charCodeAt(i); return x === 0; }
-async function ghSha(env, path) {
-  const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-  const r = await fetch(`https://api.github.com/repos/${CFG.REPO}/contents/${dir}?ref=${CFG.BRANCH}`, { headers: gh(env, "application/vnd.github+json") });
-  if (!r.ok) throw new Error("GitHub LIST " + r.status);
-  const arr = await r.json(); const e = (arr || []).find(x => x.path === path); return e ? e.sha : null;
-}
-async function ghRaw(env, path) {
-  const r = await fetch(`https://api.github.com/repos/${CFG.REPO}/contents/${path}?ref=${CFG.BRANCH}`, { headers: gh(env, "application/vnd.github.raw") });
-  if (r.status === 404) return null; if (!r.ok) throw new Error("GitHub RAW " + r.status); return r;
-}
-function b64(bytes) { let s = ""; for (let i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192)); return btoa(s); }
+async function ghJson(env, url, init) { const r = await fetch(url, Object.assign({ headers: gh(env) }, init || {})); const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {} return { r, j, t }; }
+async function headCommit(env) { const { r, j } = await ghJson(env, API(`/git/ref/heads/${CFG.BRANCH}`)); if (!r.ok) throw new Error("ref " + r.status); return j.object.sha; }
 const TYPES = { json: "application/json", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", svg: "image/svg+xml", webp: "image/webp" };
 export default {
   async fetch(req, env) {
     const C = cors(req);
     const J = (s, o, h) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...C, ...(h || {}) } });
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: C });
-    const url = new URL(req.url);
-    if (req.method === "GET" && !url.searchParams.get("sha") && !url.searchParams.get("fresh")) return J(200, { ok: true, worker: "gahlendorf-sync v1.0" });
+    const url = new URL(req.url); const q = url.searchParams;
+    if (req.method === "GET" && !q.get("manifest") && !q.get("fresh")) return J(200, { ok: true, worker: "gahlendorf-sync v2.0" });
     if (!same(req.headers.get("X-Read-Key") || "", cfg(env, "READ_KEY"))) return J(401, { ok: false, error: "key" });
-    if (req.method === "GET") {
-      const p = url.searchParams.get("path") || "workbook.json";
-      if (!okPath(p, CFG.READ_PREFIX)) return J(403, { ok: false, error: "path" });
-      try {
-        if (url.searchParams.get("sha") === "1") return J(200, { ok: true, sha: (await ghSha(env, p)) || "" });
-        const [sha, raw] = await Promise.all([p === "workbook.json" ? ghSha(env, p) : Promise.resolve(""), ghRaw(env, p)]);
-        if (!raw) return J(404, { ok: false, error: "no data" });
-        const ext = (p.split(".").pop() || "").toLowerCase();
-        return new Response(raw.body, { status: 200, headers: { "Content-Type": TYPES[ext] || "application/octet-stream", "Cache-Control": "no-store", "X-Repo-Sha": sha || "", ...C } });
-      } catch (e) { return J(502, { ok: false, error: String(e) }); }
-    }
-    if (req.method !== "POST") return J(405, { ok: false, error: "method" });
-    if (!cfg(env, "WRITE_KEY") || !same(req.headers.get("X-Write-Key") || "", cfg(env, "WRITE_KEY"))) return J(401, { ok: false, error: "key" });
-    const p = req.headers.get("X-Path");
-    if (!okPath(p, CFG.WRITE_PATHS)) return J(403, { ok: false, error: "path" });
-    /* Der Client schickt den Inhalt BEREITS als Base64 (X-Encoding: base64). So muss der
-       Worker 4–5 MB nicht selbst kodieren – das spart CPU-Zeit im Free-Tier (10 ms). */
-    const pre = req.headers.get("X-Encoding") === "base64";
-    let content;
-    if (pre) { content = (await req.text()).replace(/\s+/g, "");
-      if (content.length < 4) return J(400, { ok: false, error: "empty" });
-      if (content.length > CFG.MAX_BYTES * 4 / 3) return J(413, { ok: false, error: "zu gross" });
-      try { if (!atob(content.slice(0, 64)).trim().startsWith("{")) return J(400, { ok: false, error: "kein JSON" }); } catch (e) { return J(400, { ok: false, error: "kein Base64" }); }
-    } else { const bytes = new Uint8Array(await req.arrayBuffer());
-      if (bytes.length < 2) return J(400, { ok: false, error: "empty" });
-      if (bytes.length > CFG.MAX_BYTES) return J(413, { ok: false, error: "zu gross" });
-      if (!new TextDecoder().decode(bytes.subarray(0, 64)).trim().startsWith("{")) return J(400, { ok: false, error: "kein JSON" });
-      content = b64(bytes); }
     try {
-      const force = req.headers.get("X-Force") === "1";
-      const sha = force ? await ghSha(env, p) : (req.headers.get("X-Base-Sha") || null);
-      const body = { message: "Arbeitsmappe aktualisiert (PWA)" + (force ? " – autoritativ" : ""), content, branch: CFG.BRANCH };
-      if (sha) body.sha = sha;
-      const r = await fetch(`https://api.github.com/repos/${CFG.REPO}/contents/${p}`, { method: "PUT", headers: gh(env, "application/vnd.github+json"), body: JSON.stringify(body) });
-      if (r.ok) { let ns = ""; try { const j = await r.json(); ns = (j && j.content && j.content.sha) || ""; } catch (e) {} return J(200, { ok: true, sha: ns }, ns ? { "X-Repo-Sha": ns } : undefined); }
-      if (r.status === 409 || r.status === 422) return J(409, { ok: false, error: "stale base – frisch holen, neu anwenden" });
-      return J(502, { ok: false, error: "write " + r.status });
-    } catch (e) { return J(502, { ok: false, error: String(e) }); }
+      if (req.method === "GET" && q.get("manifest") === "1") {
+        const commit = await headCommit(env);
+        const { r: rc, j: c } = await ghJson(env, API(`/git/commits/${commit}`)); if (!rc.ok) throw new Error("commit " + rc.status);
+        const { r: rt, j: t } = await ghJson(env, API(`/git/trees/${c.tree.sha}?recursive=1`)); if (!rt.ok) throw new Error("tree " + rt.status);
+        const files = {}; for (const e of t.tree || []) if (e.type === "blob" && ok(e.path, CFG.READ)) files[e.path] = e.sha;
+        return J(200, { ok: true, commit, files }, { "X-Repo-Commit": commit });
+      }
+      if (req.method === "GET" && q.get("fresh") === "1") {
+        const p = q.get("path") || ""; if (!ok(p, CFG.READ)) return J(403, { ok: false, error: "path" });
+        const ref = /^[0-9a-f]{40}$/.test(q.get("ref") || "") ? q.get("ref") : CFG.BRANCH;
+        const r = await fetch(API(`/contents/${p.split("/").map(encodeURIComponent).join("/")}?ref=${ref}`), { headers: gh(env, "application/vnd.github.raw") });
+        if (r.status === 404) return J(404, { ok: false, error: "no data" }); if (!r.ok) return J(502, { ok: false, error: "raw " + r.status });
+        return new Response(r.body, { status: 200, headers: { "Content-Type": TYPES[(p.split(".").pop() || "").toLowerCase()] || "application/octet-stream", "Cache-Control": "no-store", ...C } });
+      }
+      if (req.method !== "POST" || q.get("commit") !== "1") return J(405, { ok: false, error: "method" });
+      if (!cfg(env, "WRITE_KEY") || !same(req.headers.get("X-Write-Key") || "", cfg(env, "WRITE_KEY"))) return J(401, { ok: false, error: "key" });
+      const len = Number(req.headers.get("Content-Length") || 0); if (len > CFG.MAX_BYTES) return J(413, { ok: false, error: "zu gross" });
+      const body = await req.json();
+      if (!body || !/^[0-9a-f]{40}$/.test(body.base || "") || !Array.isArray(body.files) || !body.files.length) return J(400, { ok: false, error: "body" });
+      for (const f of body.files) if (!ok(f.path, CFG.WRITE)) return J(403, { ok: false, error: "path " + f.path });
+      // Basis muss noch der aktuelle Stand sein – sonst 409 (App holt frisch und wendet neu an)
+      const head = await headCommit(env); if (head !== body.base) return J(409, { ok: false, error: "stale base", head });
+      const { r: rc, j: c } = await ghJson(env, API(`/git/commits/${head}`)); if (!rc.ok) throw new Error("commit " + rc.status);
+      const tree = [];
+      for (const f of body.files) {
+        if (f.delete) { tree.push({ path: f.path, mode: "100644", type: "blob", sha: null }); continue; }
+        if (typeof f.base64 === "string") {
+          const { r, j } = await ghJson(env, API("/git/blobs"), { method: "POST", headers: gh(env), body: JSON.stringify({ content: f.base64, encoding: "base64" }) });
+          if (!r.ok) throw new Error("blob " + r.status); tree.push({ path: f.path, mode: "100644", type: "blob", sha: j.sha });
+        } else if (typeof f.text === "string") tree.push({ path: f.path, mode: "100644", type: "blob", content: f.text });
+        else return J(400, { ok: false, error: "inhalt " + f.path });
+      }
+      const { r: rt, j: t } = await ghJson(env, API("/git/trees"), { method: "POST", headers: gh(env), body: JSON.stringify({ base_tree: c.tree.sha, tree }) });
+      if (!rt.ok) throw new Error("tree " + rt.status);
+      const msg = String(body.message || "Arbeitsmappe aktualisiert (App)").slice(0, 300);
+      const { r: rn, j: n } = await ghJson(env, API("/git/commits"), { method: "POST", headers: gh(env), body: JSON.stringify({ message: msg, tree: t.sha, parents: [head] }) });
+      if (!rn.ok) throw new Error("new commit " + rn.status);
+      const { r: ru } = await ghJson(env, API(`/git/refs/heads/${CFG.BRANCH}`), { method: "PATCH", headers: gh(env), body: JSON.stringify({ sha: n.sha, force: false }) });
+      if (ru.status === 422 || ru.status === 409) return J(409, { ok: false, error: "stale base (race)" });
+      if (!ru.ok) throw new Error("ref " + ru.status);
+      return J(200, { ok: true, commit: n.sha }, { "X-Repo-Commit": n.sha });
+    } catch (e) { return J(502, { ok: false, error: String(e && e.message || e) }); }
   }
 };

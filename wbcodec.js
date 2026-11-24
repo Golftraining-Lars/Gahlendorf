@@ -40,5 +40,19 @@
     const unrun=(rs)=>{const m={}; for(const [c,r0,r1,x] of rs) for(let r=r0;r<=r1;r++) m[r+','+c]=x; return m};
     return {name:s.name,hidden:s.hidden,cols:s.cols,hiddenCols:s.hiddenCols,hiddenRows:s.hiddenRows,merges:s.merges,inp,val,fmt:unrun(s.fmt),dv:unrun(s.dv),sty:unrun(s.sty)}}
   function decode(o){if(o.schema!==2) return o; const sheets=o.sheets.map(s=>decodeSheet(s,o.tmpl)); const w=Object.assign({},o,{schema:1,sheets}); delete w.tmpl; return w}
-  return {encode,decode,enc,dec,colStr,colNum};
+  /* Schema 3: eine Datei je Blatt (sheets/<kurzname>.json) + meta.json.
+     Jedes Blatt hat seine eigene Vorlagenliste, damit eine Änderung nur die Datei
+     dieses Blattes berührt (kleine Commits, kleiner Sync). */
+  function slug(n){ return n.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+  function encodeSplit(wb){ wb=wb.schema===2?decode(wb):wb; const files={}; const order=[];
+    for(const s of wb.sheets){ const T=[],Ti={}; const e=encodeSheet(s,T,Ti); e.tmpl=T; const path='sheets/'+slug(s.name)+'.json'; files[path]=e; order.push({name:s.name,file:path,hidden:!!s.hidden}); }
+    const meta={}; for(const k in wb){ if(k!=='sheets'&&k!=='schema'&&k!=='tmpl') meta[k]=wb[k]; } meta.schema=3; meta.order=order;
+    return {meta,files}; }
+  function decodeSplit(meta,files){ const sheets=meta.order.map(o=>{ const f=files[o.file]; if(!f) throw new Error('Blatt-Datei fehlt: '+o.file); return decodeSheet(f,f.tmpl); });
+    const w=Object.assign({},meta,{schema:1,sheets}); delete w.order; return w; }
+  // Text je Datei (stabil serialisiert) – Grundlage für „was hat sich geändert?“
+  function splitTexts(split){ const out={'meta.json':JSON.stringify(split.meta)}; for(const p in split.files) out[p]=JSON.stringify(split.files[p]); return out; }
+  function fromTexts(texts){ const meta=JSON.parse(texts['meta.json']); const files={}; for(const o of meta.order) files[o.file]=JSON.parse(texts[o.file]); return decodeSplit(meta,files); }
+  function decodeAny(x){ if(x&&x.meta&&x.files) return decodeSplit(x.meta,x.files); return decode(x); }
+  return {encode,decode,enc,dec,colStr,colNum,slug,encodeSplit,decodeSplit,splitTexts,fromTexts,decodeAny};
 });

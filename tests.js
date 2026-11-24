@@ -54,13 +54,19 @@ t('Schnappschuss → Kodierung → neu laden rechnet gleich',()=>{ const b=new G
 t('Journal-Replay auf frischer Fassung (Konfliktfall)',()=>{ const base=mini(); const a=new G.Book(JSON.parse(JSON.stringify(base))).build(); const ops=[{op:'sets',sheet:'Renovierungsplan',key:1,cells:{3:9}}];
   const remote=new G.Book(JSON.parse(JSON.stringify(base))).build(); remote.apply({op:'task',fields:{B:'vom Chat'}}); const fresh=remote.encoded();
   const m=new G.Book(fresh).build(); ops.forEach(o=>m.apply(o)); eq([m.value('Renovierungsplan',1,3),m.value('Renovierungsplan',3,1)],[9,'vom Chat']); });
+t('Eine Datei je Blatt: verlustfrei',()=>{ const w=mini(); const tx=C.splitTexts(C.encodeSplit(w)); eq(Object.keys(tx).length,w.sheets.length+1); const d=C.fromTexts(tx); w.sheets.forEach((s,i)=>s.inp.forEach((row,r)=>row.forEach((x,c)=>eq((d.sheets[i].inp[r]||[])[c]??null,x,s.name)))); });
+t('Eine Datei je Blatt: Änderung berührt nur ein Blatt',()=>{ const b=new G.Book(mini()).build(); const t1=C.splitTexts(b.split({})); b.setRaw('Wissensspeicher',1,7,'x'); const t2=C.splitTexts(b.split({}));
+  const diff=Object.keys(t1).filter(p=>t1[p]!==t2[p]); eq(diff,['sheets/wissensspeicher.json']); });
+t('Foto-Operation',()=>{ const b=new G.Book(mini()).build(); b.apply({op:'foto',nr:2,path:'bilder/aufgaben/2-x.jpg',date:'24.11.2026'}); eq(b.wb.fotos[2].length,1); const m=b.split({}).meta; eq(m.fotos[2][0].path,'bilder/aufgaben/2-x.jpg'); });
+t('Protokoll zeigt Datum als TT.MM.JJJJ',()=>{ const b=new G.Book(mini()).build(); b.apply({op:'sets',sheet:'Renovierungsplan',key:1,cells:{15:46350}}); if(!String(b.input('Aenderungsprotokoll',2,0)).includes('24.11.2026')) throw new Error(b.input('Aenderungsprotokoll',2,0)); });
+t('Worker: nur erlaubte Pfade schreibbar',()=>{ const src=fs.readFileSync(__dirname+'/worker/worker.js','utf8'); for(const s of ['force: false','same(','X-Read-Key','stale base']) if(!src.includes(s)) throw new Error('fehlt: '+s); });
 /* ---------- Doku-Pflicht: jede Operation steht im README ---------- */
 t('alle Operationen dokumentiert',()=>{ const src=fs.readFileSync(__dirname+'/core.js','utf8'); const ops=[...src.matchAll(/case '(\w+)':/g)].map(m=>m[1]); const doc=fs.readFileSync(__dirname+'/README.md','utf8');
   for(const o of ops) if(!doc.includes('`'+o+'`')) throw new Error('Operation '+o+' fehlt im README'); });
 t('App-Version überall gleich',()=>{ const v=require('./core.js').VERSION; const h=fs.readFileSync(__dirname+'/index.html','utf8'); const sw=fs.readFileSync(__dirname+'/sw.js','utf8');
   if(!h.includes("APP_VERSION='"+v+"'")) throw new Error('index.html'); if(!sw.includes('g10-app-'+v)) throw new Error('sw.js'); if(!fs.readFileSync(__dirname+'/README.md','utf8').includes('## '+v)) throw new Error('Changelog'); });
 /* ---------- optional: echte Daten ---------- */
-if(process.env.GAHLENDORF_DATA){ const d=JSON.parse(fs.readFileSync(process.env.GAHLENDORF_DATA,'utf8')); const b=new G.Book(d).build(); let tot=0,bad=0;
+if(process.env.GAHLENDORF_DATA){ const P=process.env.GAHLENDORF_DATA; const path=require('path'); let d; if(fs.statSync(P).isDirectory()){ const meta=JSON.parse(fs.readFileSync(path.join(P,'meta.json'),'utf8')); const files={}; for(const o of meta.order) files[o.file]=JSON.parse(fs.readFileSync(path.join(P,o.file),'utf8')); d={meta,files}; } else d=JSON.parse(fs.readFileSync(P,'utf8')); const b=new G.Book(d).build(); let tot=0,bad=0;
   for(const s of b.wb.sheets){ const id=b.sid(s.name); const vals=b.hf.getSheetValues(id); s.inp.forEach((row,r)=>row.forEach((x,c)=>{ if(typeof x==='string'&&x[0]==='='){ tot++; let v=vals[r]&&vals[r][c]; if(v&&typeof v==='object'&&'type' in v) v={e:v.value};
     const o=s.val[r][c]; const ok=JSON.stringify(o)===JSON.stringify(v??null)||(typeof o==='number'&&typeof v==='number'&&Math.abs(o-v)<1e-6*Math.max(1,Math.abs(o)))||(o==null&&v==='')||(o===''&&v==null)||(o===0&&v==null); if(!ok) bad++; } })); }
   t('echte Daten: Formeln rechnen wie gespeichert (≥ 99,9 %)',()=>{ if(bad>tot*0.001) throw new Error(bad+' von '+tot+' abweichend'); }); console.log('Datenabgleich',tot-bad,'/',tot); }

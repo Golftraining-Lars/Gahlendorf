@@ -4,7 +4,7 @@
    ausgeführt, im Journal gespeichert und bei einem Sync-Konflikt auf die frische
    Fassung erneut angewandt. */
 (function(root,f){ if(typeof module==='object'&&module.exports) module.exports=f(require('./engine.js'),require('./wbcodec.js')); else root.GCore=f(root.GEngine,root.WBCodec); })(typeof self!=='undefined'?self:this,function(E,C){
-  const VERSION='1.0.1';
+  const VERSION='1.1.0';
   // Schlüsselspalten: Zeilen werden über ihre ID gefunden, nicht über die Position
   const KEYS={'Renovierungsplan':0,'Kostenplan':0,'Wissensspeicher':0,'Kontakte':0,'Kosten':null};
   const toHF=v=>{ if(typeof v==='string'){ if(v[0]==='=') return v; return "'"+(v[0]==="'"?v.slice(1):v); } return v===undefined?null:v; };
@@ -13,7 +13,7 @@
   const today=()=>{const d=new Date();return d.getDate().toString().padStart(2,'0')+'.'+(d.getMonth()+1).toString().padStart(2,'0')+'.'+d.getFullYear()};
   const serial=(d)=>E.serialOf(d||new Date());
   class Book{
-    constructor(wb){ this.wb=wb.schema===2?C.decode(wb):wb; this.hf=null; this.idx={}; this.wb.sheets.forEach((s,i)=>this.idx[s.name]=i); }
+    constructor(wb){ this.wb=C.decodeAny(wb); if(!this.wb.fotos) this.wb.fotos={}; this.hf=null; this.idx={}; this.wb.sheets.forEach((s,i)=>this.idx[s.name]=i); }
     build(){ const data={}; for(const s of this.wb.sheets) data[s.name]=s.inp.map(r=>r.map(toHF));
       this.hf=E.HyperFormula.buildFromSheets(data,E.CONFIG); return this; }
     sid(name){ const id=this.hf.getSheetId(name); if(id===undefined) throw new Error('Blatt fehlt: '+name); return id; }
@@ -32,17 +32,19 @@
       for(let c=0;c<w;c++) out.push(fromHF(this.hf.getCellSerialized({sheet:id,row:from,col:c}))); return out; }
     writeRowShifted(sheet,inputs,from,to){ inputs.forEach((x,c)=>{ if(typeof x==='string'&&x[0]==='=') x='='+C.dec(C.enc(x.slice(1),from,c),to,c); this.setRaw(sheet,to,c,x); }); }
     copyRow(sheet,from,to,ncols){ const ins=this.rowInputs(sheet,from,ncols); this.batch(()=>this.writeRowShifted(sheet,ins,from,to)); }
+    isDateCell(sheet,r,c){ if((DATECOLS[sheet]||[]).includes(c)) return true; const s=this.wb.sheets[this.idx[sheet]]; const fi=s&&s.fmt&&s.fmt[r+','+c]; return fi!=null&&/yy|dd/i.test(this.wb.fmts[fi]||''); }
+    lv(sheet,r,c,v){ return typeof v==='number'&&v>20000&&v<80000&&this.isDateCell(sheet,r,c)?dstr(v):short(v); }
     // ---------- Operationen ----------
     resolveRow(op){ if(op.key!==undefined&&op.key!==null&&KEYS[op.sheet]!=null){ const r=this.findRow(op.sheet,KEYS[op.sheet],op.key); if(r>=0) return r; } return op.r; }
     apply(op){
       switch(op.op){
         case 'set': { const r=this.resolveRow(op); const old=this.input(op.sheet,r,op.c); if(op.log!==false) this.logRow(); if(op.log!==false) this._logR--;
           this.batch(()=>{ this.setRaw(op.sheet,r,op.c,op.input);
-            if(op.log!==false) this.log(op.sheet+' '+C.colStr(op.c)+(r+1)+(op.key!=null?' (Nr. '+op.key+')':'')+': '+short(old)+' → '+short(op.input),op.key,op.who); });
+            if(op.log!==false) this.log(op.sheet+' '+C.colStr(op.c)+(r+1)+(op.key!=null?' (Nr. '+op.key+')':'')+': '+this.lv(op.sheet,r,op.c,old)+' → '+this.lv(op.sheet,r,op.c,op.input),op.key,op.who); });
           return {r}; }
         case 'sets': { // mehrere Zellen einer Zeile in EINEM Rechengang (Formular speichern, Status + Datum)
           const r=this.resolveRow(op); const olds={}; for(const c in op.cells) olds[c]=this.input(op.sheet,r,Number(c)); this.logRow(); this._logR--;
-          this.batch(()=>{ const parts=[]; for(const c in op.cells){ this.setRaw(op.sheet,r,Number(c),op.cells[c]); parts.push(C.colStr(Number(c))+(r+1)+': '+short(olds[c])+' → '+short(op.cells[c])); }
+          this.batch(()=>{ const parts=[]; for(const c in op.cells){ this.setRaw(op.sheet,r,Number(c),op.cells[c]); parts.push(C.colStr(Number(c))+(r+1)+': '+this.lv(op.sheet,r,Number(c),olds[c])+' → '+this.lv(op.sheet,r,Number(c),op.cells[c])); }
             if(op.log!==false) this.log(op.sheet+(op.key!=null?' (Nr. '+op.key+')':'')+' '+parts.join('; '),op.key,op.who); });
           return {r}; }
         case 'version': { // Versionspflege wie bisher (Übersicht B3/C3, Legende A1, Arbeitsweise B12, Stand der Dinge A1)
@@ -54,6 +56,9 @@
             this.setRaw('Arbeitsweise',11,1,'Version '+nv+' am '+d+' ('+by+')');
             this.log('Übersicht B3/C3, Legende A1, Arbeitsweise B12, Stand der Dinge A1',null,by); });
           return {from:old,to:nv}; }
+        case 'foto': { // Foto zu einer Aufgabe (Datei liegt im Daten-Repo unter bilder/aufgaben/)
+          const L=this.wb.fotos[op.nr]||(this.wb.fotos[op.nr]=[]); if(!L.some(f=>f.path===op.path)) L.push({path:op.path,date:op.date||today(),who:op.who||'',text:op.text||''});
+          this.logRow(); this._logR--; this.batch(()=>this.log('Foto zu Nr. '+op.nr+': '+op.path,op.nr,op.who)); return {n:L.length}; }
         case 'task': return this.newTask(op);
         case 'ws': return this.newWS(op);
         case 'row': { // generische neue Zeile am Ende eines Blattes (Kontakte, Einkaufsliste …)
@@ -91,7 +96,10 @@
         return Object.assign({},s,{inp,val}); });
       return Object.assign({},this.wb,{sheets},meta||{}); }
     encoded(meta){ return C.encode(this.snapshot(meta)); }
+    split(meta){ return C.encodeSplit(this.snapshot(meta)); }
   }
   const short=v=>{ v=v==null?'':String(v); return v.length>60?v.slice(0,57)+'…':v; };
+  const DATECOLS={'Renovierungsplan':[15,25,26,27],'Kostenplan':[3],'Fristen':[0]};
+  const dstr=n=>{ const d=new Date(Date.UTC(1899,11,30)+Math.round(n)*864e5); return String(d.getUTCDate()).padStart(2,'0')+'.'+String(d.getUTCMonth()+1).padStart(2,'0')+'.'+d.getUTCFullYear(); };
   return {Book,VERSION,KEYS,toHF,fromHF,today,serial};
 });
