@@ -1,0 +1,8 @@
+{
+  "name": "gahlendorf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gahlendorf 10 – PWA (Nachfolger von Fehmarn.ods)",
+  "scripts": { "test": "node tests.js" },
+  "dependencies": { "hyperformula": "2.7.1", "xlsx": "0.18.5" }
+}

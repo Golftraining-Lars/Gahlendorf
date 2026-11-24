@@ -1,0 +1,7 @@
+name = "gahlendorf-sync"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+# Secrets (nicht hier eintragen!):
+#   npx wrangler secret put GITHUB_TOKEN
+#   npx wrangler secret put READ_KEY
+#   npx wrangler secret put WRITE_KEY
