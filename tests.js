@@ -60,6 +60,21 @@ t('Eine Datei je Blatt: Änderung berührt nur ein Blatt',()=>{ const b=new G.Bo
 t('Foto-Operation',()=>{ const b=new G.Book(mini()).build(); b.apply({op:'foto',nr:2,path:'bilder/aufgaben/2-x.jpg',date:'24.11.2026'}); eq(b.wb.fotos[2].length,1); const m=b.split({}).meta; eq(m.fotos[2][0].path,'bilder/aufgaben/2-x.jpg'); });
 t('Protokoll zeigt Datum als TT.MM.JJJJ',()=>{ const b=new G.Book(mini()).build(); b.apply({op:'sets',sheet:'Renovierungsplan',key:1,cells:{15:46350}}); if(!String(b.input('Aenderungsprotokoll',2,0)).includes('24.11.2026')) throw new Error(b.input('Aenderungsprotokoll',2,0)); });
 t('Worker: nur erlaubte Pfade schreibbar',()=>{ const src=fs.readFileSync(__dirname+'/worker/worker.js','utf8'); for(const s of ['force: false','same(','X-Read-Key','stale base']) if(!src.includes(s)) throw new Error('fehlt: '+s); });
+/* ---------- Oberfläche (ui-logic.js, ohne DOM) ---------- */
+const UL=require('./ui-logic.js'); const T0=46350; const mk=(nr,o)=>Object.assign({nr,t:'A'+nr,st:'offen',prio:3,due:null,own:null,amp:'',ausf:'',gew:'',etappe:'',bem:'',eig:''},o);
+t('Start: „Heute dran“ höchstens 5, fester Termin zuerst, nur Prio 1–2',()=>{ const ts=[mk(1,{prio:1,due:T0-30}),mk(2,{prio:2,due:T0}),mk(3,{prio:5,due:T0-90}),mk(4,{prio:4,own:T0,due:T0}),mk(5,{prio:1,due:T0+3}),mk(6,{prio:1,due:T0-1,st:'erledigt'}),
+  ...[7,8,9,10,11].map(n=>mk(n,{prio:2,due:T0-5}))]; const f=UL.focusTasks(ts,T0,5); eq(f.length,5); eq(f[0].nr,4); eq(f.map(x=>x.nr).includes(3),false); eq(f.map(x=>x.nr).includes(5),false); eq(f[1].nr,1); });
+t('Aufräumen: nur überfällig, ohne erledigte/übersprungene, wichtigste zuerst',()=>{ const ts=[mk(1,{prio:3,due:T0-2}),mk(2,{prio:1,due:T0-1}),mk(3,{due:T0}),mk(4,{due:T0-9,st:'entfällt'}),mk(5,{prio:1,due:T0-20})];
+  eq(UL.triageList(ts,T0).map(x=>x.nr),[5,2,1]); eq(UL.triageList(ts,T0,new Set([5])).map(x=>x.nr),[2,1]); });
+t('Datum +1 Monat am Monatsende',()=>{ const d=UL.fromYMD(2027,0,31); const m=UL.addMonths(d,1); const x=UL.toDate(m); eq([x.getUTCFullYear(),x.getUTCMonth(),x.getUTCDate()],[2027,1,28]); eq(UL.addMonths(T0,3)-T0,92); });
+t('Statusanzeige in Klartext',()=>{ eq(UL.syncLabel('synchron',0,true),'Alles gespeichert'); eq(UL.syncLabel('geändert',3,true),'3 warten'); eq(UL.syncLabel('gespeichert · sendet in 2 Min.',1,true),'1 · sendet in 2 Min.');
+  eq(UL.syncLabel('lokal',0,false),'nur lokal'); eq(UL.syncLabel('lokal',2,false),'2 nur lokal'); eq(UL.engineLabel('lädt',5000,10000),'startet 50 %'); });
+t('Aufgaben: Filter Etappe/Gewerk, ohne Datum, Sortierung',()=>{ const ts=[mk(1,{etappe:'E1',gew:'Elektro',due:T0+5,prio:2}),mk(2,{etappe:'E1',gew:'Dach',prio:1}),mk(3,{etappe:'E3',due:T0+1,prio:1}),mk(4,{st:'erledigt',erl:T0})];
+  eq(UL.filterTasks(ts,{a:'offen',et:'E1'}).map(x=>x.nr),[1,2]); eq(UL.filterTasks(ts,{a:'ohne'}).map(x=>x.nr),[2]); eq(UL.filterTasks(ts,{a:'offen',s:'prio'}).map(x=>x.nr),[3,2,1]);
+  eq(UL.filterTasks(ts,{a:'offen',s:'nrab'}).map(x=>x.nr),[3,2,1]); eq(UL.filterTasks(ts,{a:'offen',q:'2'}).map(x=>x.nr),[2]); eq(UL.filterTasks(ts,{a:'erledigt'}).map(x=>x.nr),[4]); });
+t('Aufgabennummern im Text erkennen',()=>{ eq(UL.taskRefs('siehe Nr. 511 und Nr. 505, 56, 504; Statik (Nr. 25/487)'),[511,505,56,504,25,487]); eq(UL.taskRefs('ohne'),[]); eq(UL.numList('82, 207 · SH-20'),[82,207,20]); eq(UL.numList(7),[7]); });
+t('Zuletzt geöffnet',()=>{ eq(UL.pushRecent(['a','b','c'],'b',3),['b','a','c']); eq(UL.pushRecent(['a','b','c'],'d',3),['d','a','b']); });
+t('index.html lädt ui-logic.js, Service Worker hält es offline',()=>{ if(!fs.readFileSync(__dirname+'/index.html','utf8').includes('src="ui-logic.js"')) throw new Error('index'); if(!fs.readFileSync(__dirname+'/sw.js','utf8').includes("'ui-logic.js'")) throw new Error('sw'); });
 /* ---------- Doku-Pflicht: jede Operation steht im README ---------- */
 t('alle Operationen dokumentiert',()=>{ const src=fs.readFileSync(__dirname+'/core.js','utf8'); const ops=[...src.matchAll(/case '(\w+)':/g)].map(m=>m[1]); const doc=fs.readFileSync(__dirname+'/README.md','utf8');
   for(const o of ops) if(!doc.includes('`'+o+'`')) throw new Error('Operation '+o+' fehlt im README'); });

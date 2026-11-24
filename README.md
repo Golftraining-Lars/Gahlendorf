@@ -17,6 +17,7 @@ Progressive Web App für Renovierung, Kosten, Finanzen und Wissen rund um Gahlen
 | `engine-worker.js` | Rechenkern im Hintergrund (Web Worker) |
 | `engine.js` | HyperFormula + Zusatzfunktionen, damit die ODS-Formeln **unverändert** wie in LibreOffice rechnen |
 | `core.js` | Arbeitsmappe im Rechenkern: Operationen, Protokoll, Schnappschuss – gemeinsam für App, Tests und Chat-Werkzeug |
+| `ui-logic.js` | Reine Oberflächen-Logik ohne DOM (Heute dran, Aufräumen, Filter, Klartext-Status, Datumsrechnung) – von `tests.js` geprüft |
 | `wbcodec.js` | Kompaktes Speicherformat (Formeln relativ kodiert, Vorlagen + Läufe je Spalte); `encodeSplit`/`fromTexts` = eine Datei je Blatt |
 | `sw.js`, `manifest.webmanifest`, `icons/` | Installierbar, App-Hülle offline |
 | `tools/wbcli.js` | Kommandozeile für die Claude-Chats (gleiche Ops wie die App) |
@@ -79,6 +80,8 @@ Startprompts für die Chats: `docs/Startprompt_Tagesliste_Chat.txt`, `docs/Start
 - Diese Doku aktuell halten: neue Operationen in die Tabelle oben (der Test prüft das), Changelog unten, Versionsnummer in `core.js` (`VERSION`), `index.html` (`APP_VERSION`) und `sw.js` (Cache-Name) gleich halten (der Test prüft das).
 
 ## Changelog
+## 1.2.0
+- 24.11.2026: **Bedienung (Audit 1–13).** Start: Block „Heute dran“ (max. 5: fester Termin heute, dann Prio 1–2 fällig), weitere Bereiche einklappbar mit Anzahl; **„Überfälliges aufräumen“** (je Aufgabe +1 Woche / +1 Monat / +3 Monate / Datum / erledigt / entfällt / überspringen; setzt Spalte Z bzw. den Status – Kostenplan-Regel bleibt). Aufgabendialog: Knöpfe unten immer sichtbar, Nachfrage bei ungespeicherten Änderungen, Schnellknöpfe für die Fälligkeit, „Meine Bemerkungen“ (Spalte N) oben, Bemerkungen (M) einklappbar. Langer Druck auf den Erledigt-Kreis = Statusauswahl. **Rückgängig** (6 s) nach erledigt/Status/Datum/Einkauf. Startanzeige des Rechenkerns mit Fortschritt (nach der Dauer des letzten Starts) und vorgemerkten Änderungen. Statusanzeige oben in Klartext („Alles gespeichert“, „3 Änderungen warten“). Aufgaben: Filter Etappe/Gewerk/Ausführung, „Ohne Datum“, Sortierung, „weitere laden“. Wissen: Themen-Leiste, Filter Thema/Typ, Aufgaben-Nummern antippbar, „weitere laden“. Mehr: Suche, zuletzt geöffnet. Tabellen: Zeile als Karte (Zeilennummer bzw. am Handy jede Zelle), Spaltenauswahl je Blatt. Neue Ansichten **Eigenleistung**, **Einkaufsliste** (abhaken), **Fotos & Bilder**. Bedienbarkeit mit Tastatur/Bildschirmleser (Rollen, Beschriftungen). Neue Datei `ui-logic.js` (reine Logik, in `tests.js` geprüft).
 ## 1.1.0
 - 24.11.2026: **Eine Datei je Blatt** + Worker v2 (ein Commit mit nur den geänderten Blättern über die Git-Daten-API) – das Daten-Repo wächst nur noch um echte Änderungen. **Start = Tagesliste** (Heute, Überfällig, Diese Woche, Termine 7 Tage, Wartung, Entscheidungen). **Diagramme** Kontostand-Prognose (Finanzen). **Bedingte Farben** in der Tabellenansicht (Prio-Farbskala, Status, Ampeln, gestrichene Kosten). **Fotos an Aufgaben** (verkleinert, offline vorgemerkt). Ansichten finden Kostenplan-/Finanzzeilen über Beschriftungen statt fester Positionen; Protokoll zeigt Datumsangaben als TT.MM.JJJJ. `wbcli.js` und `tagesliste.py` lesen/schreiben den Daten-Ordner.
 ## 1.0.1

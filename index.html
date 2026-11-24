@@ -39,7 +39,8 @@ header.top{position:sticky;top:0;z-index:20;background:var(--accent);color:var(-
 header.top h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header.top .sub{font-weight:400;opacity:.8;font-size:13px;margin-left:6px}
 .chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 9px;font-size:12px;line-height:1.3;white-space:nowrap}
-header .chip{background:rgba(255,255,255,.16);color:inherit;border:0;cursor:pointer}
+header .chip{background:rgba(255,255,255,.16);color:inherit;border:0;cursor:pointer;max-width:42vw;overflow:hidden;text-overflow:ellipsis} header .chip span:last-child{overflow:hidden;text-overflow:ellipsis}
+@media (max-width:420px){ header.top .sub{display:none} }
 .dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
 main{padding:14px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px));max-width:1100px;margin:0 auto}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);display:flex;
@@ -122,6 +123,34 @@ label.f > *:not(span){color:var(--fg)}
 .imgs{display:flex;gap:8px;overflow-x:auto;margin-bottom:10px} .imgs img{height:150px;border-radius:8px;border:1px solid var(--line);cursor:zoom-in}
 .ws .item .t{font-weight:400}
 .hi{background:var(--warn-soft);border-radius:3px}
+/* 1.2.0 – Bedienung */
+dialog .ft{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;z-index:2}
+dialog .bd{padding-bottom:16px}
+.confirm{background:var(--warn-soft);border-radius:10px;padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13.5px}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px} .quick button{border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:4px 10px;font-size:12.5px;cursor:pointer}
+.own{border:2px solid var(--accent-soft);border-radius:12px;padding:8px 10px;background:var(--surface)} .own > span{color:var(--accent);font-weight:650}
+details.box{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-top:10px} details.box > summary{list-style:none;cursor:pointer;padding:11px 14px;display:flex;gap:8px;align-items:center;font-weight:600}
+details.box > summary::-webkit-details-marker{display:none} details.box > summary::after{content:"›";margin-left:auto;color:var(--muted);transition:transform .15s;font-size:18px} details.box[open] > summary::after{transform:rotate(90deg)}
+details.box > .in{padding:0 10px 10px}
+details.mini > summary{cursor:pointer;color:var(--muted);font-size:13px}
+.cnt{border-radius:999px;background:var(--surface2);color:var(--muted);font-size:12px;padding:1px 8px;font-weight:600}
+.cnt.bad{background:var(--bad-soft);color:var(--bad)}
+.focus{border:2px solid var(--accent);}
+.prog{height:6px;border-radius:99px;background:var(--surface2);overflow:hidden;margin-top:6px} .prog > i{display:block;height:100%;background:var(--accent);transition:width .4s}
+.triage .t{font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.triage .acts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px} .triage .acts .btn{padding:12px 10px}
+.toast{display:flex;gap:12px;align-items:center} .toast button{border:0;background:none;color:var(--accent-soft);font-weight:700;cursor:pointer;padding:2px 4px;text-decoration:underline}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:10px} .filters select{padding:7px 9px;font-size:13.5px}
+.lnk{border:0;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 8px;font-size:12px;font-weight:600;cursor:pointer}
+.chk{width:26px;height:26px;border-radius:7px;border:2px solid var(--line);background:var(--surface);flex:none;display:grid;place-items:center;cursor:pointer}
+.chk.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.item.gone .t{text-decoration:line-through;color:var(--muted)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px} .gal button{border:1px solid var(--line);background:var(--surface2);border-radius:10px;padding:0;overflow:hidden;cursor:pointer;aspect-ratio:1;max-width:100%;position:relative}
+.gal img:not([src]){visibility:hidden} .gal img{width:100%;height:100%;object-fit:cover;display:block} .gal span{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;border-radius:6px;padding:1px 6px}
+.rowcard .kv .v{white-space:pre-wrap} .rowcard .kv .k{cursor:default} .rowcard .kv .v.ed{cursor:pointer;border-bottom:1px dashed var(--line)}
+.ft .confirm{flex-basis:100%}
+.menu{display:flex;flex-direction:column;gap:8px} .menu .btn{text-align:left;padding:12px 14px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (min-width:900px){ body{padding-bottom:0;padding-left:210px} nav.tabs{top:0;right:auto;width:210px;height:auto;flex-direction:column;justify-content:flex-start;border-top:0;border-right:1px solid var(--line);padding-top:70px}
   nav.tabs button{flex:none;flex-direction:row;justify-content:flex-start;gap:10px;font-size:14.5px;padding:11px 18px}
   .fab{bottom:24px} .toast{bottom:24px} header.top{margin-left:-210px;padding-left:226px} }
@@ -130,22 +159,24 @@ label.f > *:not(span){color:var(--fg)}
 <body>
 <header class="top">
   <h1 id="ttl">Gahlendorf 10<span class="sub" id="sub"></span></h1>
-  <button class="chip" id="engChip" title="Rechenkern"><span class="dot"></span><span id="engTxt">lädt</span></button>
-  <button class="chip" id="syncChip" title="Synchronisation"><span class="dot"></span><span id="syncTxt">–</span></button>
+  <button class="chip" id="engChip" title="Rechenkern" aria-label="Rechenkern-Status"><span class="dot"></span><span id="engTxt">lädt</span></button>
+  <button class="chip" id="syncChip" title="Abgleich – tippen zum Abgleichen" aria-label="Abgleich-Status, tippen zum Abgleichen"><span class="dot"></span><span id="syncTxt" aria-live="polite">–</span></button>
 </header>
 <main id="view"><div class="empty">Lade Daten …</div></main>
-<nav class="tabs" id="tabs">
+<nav class="tabs" id="tabs" aria-label="Hauptbereiche">
   <button data-tab="start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Start</button>
   <button data-tab="aufgaben"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.3 1.3L7 5M3.5 12l1.3 1.3L7 11M3.5 18l1.3 1.3L7 17"/></svg>Aufgaben</button>
   <button data-tab="kosten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M15 8.8a3.6 3.6 0 1 0 0 6.4M7.5 11h6M7.5 13.3h6"/></svg>Kosten</button>
   <button data-tab="wissen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4.5h10.5A3.5 3.5 0 0 1 19 8v11.5H8.5A3.5 3.5 0 0 1 5 16z"/><path d="M5 16a3.5 3.5 0 0 1 3.5-3.5H19"/></svg>Wissen</button>
   <button data-tab="mehr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg>Mehr</button>
 </nav>
-<dialog class="sheet" id="dlg"></dialog>
+<dialog class="sheet" id="dlg" aria-labelledby="dlgTitle"></dialog>
 <script src="wbcodec.js"></script>
+<script src="ui-logic.js"></script>
 <script>
 'use strict';
-const APP_VERSION='1.1.0';
+const APP_VERSION='1.2.0';
+const U=UILogic;
 /* ============================== Speicher (IndexedDB) ============================== */
 const IDB={db:null,
   open(){ return this.db||(this.db=new Promise((res,rej)=>{ const q=indexedDB.open('gahlendorf',1); q.onupgradeneeded=()=>q.result.createObjectStore('kv'); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); })); },
@@ -157,10 +188,13 @@ const LS={ get(k,d){ try{ const v=localStorage.getItem('g10.'+k); return v==null
 /* ============================== Zustand ============================== */
 const S={texts:null,base:null,photos:{},lastPush:0,forcePush:false,pushT:null,wb:null,by:{},enc:null,sha:'',journal:[],seq:0,engine:'aus',sync:'',tab:LS.get('tab','start'),
   settings:Object.assign({url:'',readKey:'',writeKey:'',who:'Lars'},LS.get('settings',{})),
-  filter:LS.get('filter',{a:'offen',q:''}),pendingOps:[],saving:false,dirty:false,sheetView:null,showHidden:false};
+  filter:LS.get('filter',{a:'offen',q:''}),boxes:LS.get('boxes',{}),lim:300,wlim:200,pendingOps:[],saving:false,dirty:false,sheetView:null,showHidden:false};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function toast(t,ms){ const d=document.createElement('div'); d.className='toast'; d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),ms||2600); }
+function toast(t,ms,action){ document.querySelectorAll('.toast').forEach(x=>x.remove()); const d=document.createElement('div'); d.className='toast'; d.setAttribute('role','status'); d.setAttribute('aria-live','polite');
+  const s=document.createElement('span'); s.textContent=t; d.appendChild(s);
+  if(action){ const b=document.createElement('button'); b.textContent=action[0]; b.onclick=()=>{ d.remove(); action[1](); }; d.appendChild(b); }
+  document.body.appendChild(d); setTimeout(()=>d.remove(),ms||(action?6000:2600)); }
 /* ============================== Arbeitsmappe lesen ============================== */
 function setWB(dec){ S.wb=dec; S.by={}; dec.sheets.forEach(s=>S.by[s.name]=s); }
 const sh=n=>S.by[n];
@@ -205,10 +239,15 @@ function engineCall(cmd,data){ return new Promise((res,rej)=>{ const id=++wid; w
 function startEngine(){ if(W) W.terminate(); setEngine('lädt'); W=new Worker('engine-worker.js');
   W.onmessage=(e)=>{ const m=e.data; const w=waiters[m.id]; if(!w) return; delete waiters[m.id]; m.ok?w.res(m):w.rej(new Error(m.error)); };
   W.onerror=(e)=>{ setEngine('Fehler'); console.error(e); };
-  const t=Date.now();
-  return engineCall('init',{texts:S.texts}).then(m=>{ applyChanges(m.changes); setEngine('bereit'); render(); return flushPending(); })
-    .catch(err=>{ setEngine('Fehler'); toast('Rechenkern: '+err.message,6000); }); }
-function setEngine(t){ S.engine=t; $('#engTxt').textContent=t==='bereit'?'bereit':t; $('#engChip').style.opacity=t==='bereit'?.75:1; }
+  S.engT0=Date.now(); clearInterval(S.engTick); S.engTick=setInterval(engProgress,500);
+  return engineCall('init',{texts:S.texts}).then(m=>{ LS.set('engMs',Date.now()-S.engT0); clearInterval(S.engTick); applyChanges(m.changes); setEngine('bereit'); render(); return flushPending(); })
+    .catch(err=>{ clearInterval(S.engTick); setEngine('Fehler'); toast('Rechenkern: '+err.message,6000); }); }
+function setEngine(t){ S.engine=t; engProgress(); }
+/* Startanzeige: Fortschritt nach der Dauer des letzten Starts (geschätzt), dazu vorgemerkte Änderungen */
+function engProgress(){ const el=Date.now()-(S.engT0||Date.now()), est=LS.get('engMs',0);
+  $('#engTxt').textContent=U.engineLabel(S.engine,el,est); $('#engChip').style.opacity=S.engine==='bereit'?.75:1;
+  const p=document.getElementById('engProg'); if(p){ const pct=est?Math.min(95,Math.round(100*el/est)):Math.min(90,Math.round(el/600)); p.style.width=pct+'%'; }
+  const pt=document.getElementById('engPend'); if(pt) pt.textContent=S.pendingOps.length?` · ${S.pendingOps.length} Änderung(en) vorgemerkt, werden danach eingerechnet`:''; }
 function applyChanges(ch){ if(!ch) return; for(const [n,r,c,v] of ch){ const s=sh(n); if(!s) continue; while(s.val.length<=r){ s.val.push([]); s.inp.push([]); } s.val[r][c]=v; } }
 function applyInputs(inputs){ if(!inputs) return; for(const n in inputs){ const s=sh(n); if(!s) continue; s.inp=inputs[n].inp; s.val=inputs[n].val; } }
 /* ============================== Operationen + Journal ============================== */
@@ -219,9 +258,9 @@ function optimistic(op){ if(op.op==='foto'){ const f=S.wb.fotos||(S.wb.fotos={})
   if(op.sheet==='Kostenplan'&&cells[2]!==undefined&&op.key!=null){ const rr=findRow(RP,0,op.key); if(rr>=0&&isF(RP,rr,2)) sh(RP).val[rr][2]=cells[2]; } }
 let busy=0; function setBusy(d){ busy+=d; if(S.engine==='bereit'||S.engine==='rechnet …') setEngine(busy>0?'rechnet …':'bereit'); }
 async function doOp(op){ if(canSync()&&!S.settings.writeKey){ toast('Dieses Gerät ist auf „nur lesen“ eingestellt (kein Schreib-Schlüssel).',4000); return null; }
-  op.who=S.settings.who||'PWA'; op.ts=Date.now(); op.seq=++S.seq; S.journal.push(op); await IDB.set('journal',S.journal);
+  op.who=S.settings.who||'PWA'; op.ts=Date.now(); op.seq=++S.seq; S.journal.push(op); await IDB.set('journal',S.journal); setSync();
   optimistic(op); render();
-  if(S.engine!=='bereit'&&S.engine!=='rechnet …'){ S.pendingOps.push(op); toast('Gespeichert – wird eingerechnet, sobald der Rechenkern bereit ist'); return null; }
+  if(S.engine!=='bereit'&&S.engine!=='rechnet …'){ S.pendingOps.push(op); engProgress(); return null; }
   return runOp(op); }
 async function runOp(op){ setBusy(1); try{ const m=await engineCall('op',{op}); applyInputs(m.inputs); applyChanges(m.changes); markDirty(); render(); return m.res; } finally{ setBusy(-1); } }
 async function flushPending(){ while(S.pendingOps.length){ const op=S.pendingOps.shift(); try{ await runOp(op); }catch(e){ toast('Änderung fehlgeschlagen: '+e.message,6000); } } }
@@ -246,7 +285,8 @@ async function saveNow(){ if(S.saving||S.engine!=='bereit'){ if(S.dirty||S.force
    journal    – noch nicht gesendete Operationen (werden bei Konflikt auf die frische Fassung erneut angewandt)
    photos     – noch nicht gesendete Fotos {pfad: base64} */
 const canSync=()=>!!(S.settings.url&&S.settings.readKey);
-function setSync(t){ S.sync=t; $('#syncTxt').textContent=t||'–'; }
+function setSync(t){ if(t!=null) S.sync=t; const n=S.journal.length+Object.keys(S.photos||{}).length; $('#syncTxt').textContent=U.syncLabel(S.sync,n,canSync());
+  $('#syncChip').style.background=S.sync==='Fehler'?'rgba(255,120,110,.35)':''; }
 function hdrs(extra){ return Object.assign({'X-Read-Key':S.settings.readKey},extra||{}); }
 async function wget(q){ const r=await fetch(S.settings.url+q,{headers:hdrs(),cache:'no-store'}); if(!r.ok){ let e='HTTP '+r.status; try{ e=(await r.json()).error||e; }catch(_){} throw new Error(e); } return r; }
 async function manifest(){ const j=await (await wget('?manifest=1')).json(); if(!j.ok) throw new Error(j.error); return j; }
@@ -287,7 +327,7 @@ async function pull(force,noPush){ if(!canSync()) return; try{ setSync('prüft �
 function go(tab,arg){ S.tab=tab; LS.set('tab',tab); if(tab==='blatt') S.sheetView=arg||S.sheetView; render(); window.scrollTo(0,0); }
 document.getElementById('tabs').addEventListener('click',e=>{ const b=e.target.closest('button[data-tab]'); if(b) go(b.dataset.tab); });
 function render(){ if(!S.wb) return; const v=$('#view'); const t=S.tab;
-  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t||(t==='blatt'||t==='bericht'||t==='kontakte'||t==='entsch'||t==='einst'||t==='finanzen')&&b.dataset.tab==='mehr'));
+  document.querySelectorAll('nav.tabs button').forEach(b=>{ const on=b.dataset.tab===t||!['start','aufgaben','kosten','wissen'].includes(t)&&b.dataset.tab==='mehr'; b.classList.toggle('on',on); if(on) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
   const ver=V('Übersicht',2,1); $('#sub').textContent=ver?'· '+ver:'';
   const fab=document.querySelector('.fab'); if(fab) fab.remove();
   const keep=t==='blatt'?document.querySelector('.tablewrap'):null; const st=keep?[keep.scrollTop,keep.scrollLeft]:null;
@@ -299,10 +339,10 @@ function render(){ if(!S.wb) return; const v=$('#view'); const t=S.tab;
 const RP='Renovierungsplan';
 const COL={nr:0,todo:1,status:2,prio:3,phase:4,gewerk:5,ausf:6,abh:7,block:8,hinw:9,kostS:10,kostR:11,bem:12,eig:13,quelle:14,erl:15,etappe:18,fz:25,fa:26,anst:27,amp:28,wis:33};
 function tasks(){ const out=[]; const n=rowsOf(RP); for(let r=1;r<n;r++){ const nr=V(RP,r,0); if(typeof nr!=='number'||!V(RP,r,1)) continue;
-  out.push({r,nr,t:V(RP,r,1),st:V(RP,r,2)||'',prio:V(RP,r,3),gew:V(RP,r,5)||'',due:V(RP,r,26),amp:V(RP,r,28)||'',bem:V(RP,r,12)||'',eig:V(RP,r,13)||'',ausf:V(RP,r,6)||''}); } return out; }
+  out.push({r,nr,t:V(RP,r,1),st:V(RP,r,2)||'',prio:V(RP,r,3),gew:V(RP,r,5)||'',due:V(RP,r,26),amp:V(RP,r,28)||'',bem:V(RP,r,12)||'',eig:V(RP,r,13)||'',ausf:V(RP,r,6)||'',own:V(RP,r,25),etappe:V(RP,r,18)||'',erl:V(RP,r,15)}); } return out; }
 const ampCls=a=>a==='überfällig'?'überfällig':a==='jetzt anstoßen'?'jetzt':a==='bald'?'bald':a?'ok':'';
 function taskItem(x,showCheck){ const open=x.st==='offen'||x.st==='läuft';
-  return `<div class="item" data-act="task" data-nr="${x.nr}">${showCheck&&open?`<span class="check" data-act="done" data-nr="${x.nr}" title="erledigt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-10"/></svg></span>`:''}
+  return `<div class="item" data-act="task" data-nr="${x.nr}" role="button" tabindex="0" aria-label="Aufgabe ${x.nr}: ${esc(String(x.t).slice(0,80))}">${showCheck&&open?`<span class="check" data-act="done" data-nr="${x.nr}" role="button" tabindex="0" title="erledigt (lange drücken: anderer Status)" aria-label="Nr. ${x.nr} erledigt – lange drücken für anderen Status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5 9-10"/></svg></span>`:''}
    <div class="nr">${x.nr}</div><div class="main"><div class="t clamp">${esc(x.t)}</div><div class="meta"><span class="pill ${esc(x.st)}">${esc(x.st||'–')}</span>
    ${x.prio!=null?`<span>Prio ${esc(x.prio)}</span>`:''}${typeof x.due==='number'?`<span>fällig ${fdate(x.due)}</span>`:''}${x.amp&&open?`<span class="amp ${ampCls(x.amp)}">${esc(x.amp)}</span>`:''}${x.gew?`<span>${esc(x.gew)}</span>`:''}</div></div></div>`; }
 function sortDue(a,b){ const da=typeof a.due==='number'?a.due:1e9, db=typeof b.due==='number'?b.due:1e9; return da-db||(a.prio||9)-(b.prio||9)||a.nr-b.nr; }
@@ -312,6 +352,38 @@ async function setStatus(nr,st,extra){ const t=statusTarget(nr); const cells={[t
   if(st==='erledigt') cells[t.cDate]=todaySerial();
   if(extra&&extra.sheet===t.sheet) Object.assign(cells,extra.cells);
   await doOp({op:'sets',sheet:t.sheet,key:t.key,cells}); }
+/* Status mit „Rückgängig“: alter Status und altes Datum werden gemerkt */
+async function setStatusUndo(nr,st){ const t=statusTarget(nr); const r=findRow(t.sheet,0,nr); const old={[t.cStatus]:V(t.sheet,r,t.cStatus),[t.cDate]:V(t.sheet,r,t.cDate)};
+  await setStatus(nr,st); toast('Nr. '+nr+': '+st,6000,['Rückgängig',async()=>{ await doOp({op:'sets',sheet:t.sheet,key:t.key,cells:old}); toast('Nr. '+nr+' zurückgesetzt'); }]); }
+/* Eigenes Fälligkeitsdatum (Spalte Z) setzen, mit „Rückgängig“ */
+async function setDue(nr,serial,quiet){ const r=findRow(RP,0,nr); const old=V(RP,r,25); await doOp({op:'sets',sheet:RP,key:nr,cells:{25:serial}});
+  if(!quiet) toast('Nr. '+nr+' fällig '+fdate(serial),6000,['Rückgängig',()=>doOp({op:'sets',sheet:RP,key:nr,cells:{25:old}})]); return old; }
+/* Langer Druck auf den Erledigt-Kreis: anderen Status wählen */
+function statusMenu(nr){ const r=findRow(RP,0,nr); const cur=V(RP,r,2);
+  const d=openDlg(`Nr. ${nr} · Status`,`<div class="small muted clamp">${esc(V(RP,r,1))}</div><div class="menu">${['offen','läuft','erledigt','entfällt'].map(o=>`<button class="btn ${o===cur?'primary':''}" data-st="${o}">${o}${o===cur?' (aktuell)':''}</button>`).join('')}</div>`);
+  d.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ d.close(); if(b.dataset.st!==cur) setStatusUndo(nr,b.dataset.st); }); }
+/* Überfälliges aufräumen: eine Aufgabe nach der anderen */
+function triageDlg(){ const T=todaySerial(); const done=S.triDone||(S.triDone=new Set()); const L=U.triageList(tasks(),T,done);
+  if(!L.length){ if($('#dlg').open) $('#dlg').close(); toast('Alles aufgeräumt 👍'); S.triDone=new Set(); render(); return; }
+  const x=L[0]; const total=L.length+done.size;
+  const d=openDlg(`Aufräumen · ${done.size+1} von ${total}`,`<div class="triage" style="display:flex;flex-direction:column;gap:12px">
+   <div class="prog"><i style="width:${Math.round(100*done.size/total)}%"></i></div>
+   <div class="meta" style="display:flex;gap:6px;flex-wrap:wrap"><span class="muted">Nr. ${x.nr}</span><span class="pill ${esc(x.st)}">${esc(x.st)}</span><span>Prio ${esc(x.prio??'–')}</span><span class="amp überfällig">fällig ${fdate(x.due)} · ${T-x.due} Tage drüber</span></div>
+   <div class="t">${esc(x.t)}</div>${x.bem?`<details class="mini"><summary>Bemerkungen</summary><div class="small" style="white-space:pre-wrap">${esc(x.bem)}</div></details>`:''}
+   <div class="acts"><button class="btn" data-tr="w1">+1 Woche</button><button class="btn" data-tr="m1">+1 Monat</button><button class="btn" data-tr="m3">+3 Monate</button>
+    <label class="btn" style="display:flex;align-items:center;justify-content:center;gap:6px">Datum <input type="date" id="trd" style="width:auto;padding:2px 4px;border:0;background:none"></label>
+    <button class="btn" data-tr="done" style="color:var(--ok)">✓ erledigt</button><button class="btn" data-tr="weg" style="color:var(--muted)">entfällt</button></div></div>`,
+   `<button class="btn" data-tr="open">Öffnen</button><button class="btn" data-tr="skip">Überspringen</button><button class="btn" data-act="close">Fertig</button>`);
+  const next=async(fn,msg)=>{ done.add(x.nr); triageDlg(); if(fn) await fn(); if(msg) toast(msg,1500); };
+  d.querySelectorAll('[data-tr]').forEach(b=>b.onclick=()=>{ const k=b.dataset.tr;
+    if(k==='w1') next(()=>setDue(x.nr,T+7,true),'Nr. '+x.nr+' → '+fdate(T+7));
+    if(k==='m1') next(()=>setDue(x.nr,U.addMonths(T,1),true),'Nr. '+x.nr+' → '+fdate(U.addMonths(T,1)));
+    if(k==='m3') next(()=>setDue(x.nr,U.addMonths(T,3),true),'Nr. '+x.nr+' → '+fdate(U.addMonths(T,3)));
+    if(k==='done') next(()=>setStatus(x.nr,'erledigt'),'Nr. '+x.nr+' erledigt');
+    if(k==='weg') next(()=>setStatus(x.nr,'entfällt'),'Nr. '+x.nr+' entfällt');
+    if(k==='skip'){ (S.triSkip||(S.triSkip=new Set())).add(x.nr); next(null); }
+    if(k==='open') taskDlg(x.nr); });
+  d.querySelector('#trd').onchange=e=>{ const v=e.target.value; if(!v) return; const [y,m,dd]=v.split('-').map(Number); const sn=U.fromYMD(y,m-1,dd); next(()=>setDue(x.nr,sn,true),'Nr. '+x.nr+' → '+fdate(sn)); }; }
 /* ============================== Ansichten ============================== */
 const VIEWS={};
 /* Zeilen über ihre Beschriftung finden statt über feste Positionen – Ansichten bleiben richtig,
@@ -333,40 +405,58 @@ VIEWS.start=()=>{ const ts=tasks(); const open=ts.filter(x=>x.st==='offen'||x.st
   const wa=[]; for(let r=1;r<rowsOf('Regelmäßige Wartung');r++){ const st=String(V('Regelmäßige Wartung',r,9)||''); if(/überfällig|bald/.test(st)) wa.push({id:V('Regelmäßige Wartung',r,0),t:V('Regelmäßige Wartung',r,2),st,r}); }
   const ent=[]; for(let r=2;r<rowsOf('Entscheidungen');r++){ if(V('Entscheidungen',r,0)==='offen') ent.push({thema:V('Entscheidungen',r,1),txt:V('Entscheidungen',r,2),st:V('Entscheidungen',r,3)}); }
   const WT=['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag']; const d=new Date();
+  const focus=U.focusTasks(ts,T,5); const tri=U.triageList(ts,T);
   const list=(arr,lim,more)=>arr.length?`<div class="list">${arr.slice(0,lim).map(x=>taskItem(x,true)).join('')}</div>${arr.length>lim?`<div class="toolbar" style="margin-top:8px"><button class="btn" data-act="filtgo" data-k="${more}">alle ${arr.length} anzeigen</button></div>`:''}`:'<div class="empty">Nichts offen.</div>';
+  const box=(id,title,cnt,inner,bad)=>`<details class="box" data-box="${id}" ${S.boxes[id]?'open':''}><summary>${title} <span class="cnt ${bad&&cnt?'bad':''}">${cnt}</span></summary><div class="in">${inner}</div></details>`;
   return `${banner()}
   <div class="card" style="margin-bottom:12px"><div class="small muted">Tagesliste</div><div style="font-size:20px;font-weight:650">${WT[d.getDay()]}, ${p2(d.getDate())}.${p2(d.getMonth()+1)}.${d.getFullYear()}</div>
-   <div class="meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><span class="amp überfällig">${heute.length} mit Termin heute</span><span class="amp überfällig">${ueber.length} überfällig · ${ueber.filter(x=>x.prio===1).length} Prio 1</span><span class="amp bald">${woche.length} in 7 Tagen</span><span class="amp ok">${fr.length} Termine</span></div></div>
-  ${fr.length?`<h2>Termine &amp; Fristen · 7 Tage</h2><div class="list">${fr.map(f=>`<div class="item" data-act="sheet" data-s="Fristen"><div class="nr">${WT[dateOf(f.d).getUTCDay()].slice(0,2)} ${fdate(f.d).slice(0,6)}</div><div class="main"><div class="t">${esc(f.was)}</div>${f.bem?`<div class="small muted clamp">${esc(f.bem)}</div>`:''}<div class="meta"><span>${esc(f.typ||'')}</span></div></div></div>`).join('')}</div>`:''}
-  ${heute.length?`<h2>Heute (fester Termin)</h2>${list(heute,40,'offen')}`:''}
-  <h2>Überfällig</h2>${list(ueber,12,'ueber')}
-  <h2>Diese Woche fällig</h2>${list(woche,12,'offen')}
-  ${wa.length?`<h2>Wartung</h2><div class="list">${wa.map(w=>`<div class="item" data-act="sheet" data-s="Regelmäßige Wartung"><div class="nr">${esc(w.id)}</div><div class="main"><div class="t">${esc(w.t)}</div><div class="meta"><span class="amp ${/überfällig/.test(w.st)?'überfällig':'bald'}">${esc(w.st)}</span></div></div></div>`).join('')}</div>`:''}
-  <h2>Geld</h2><div class="grid2">
+   <div class="meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><span class="amp überfällig">${ueber.length} überfällig · ${ueber.filter(x=>x.prio===1).length} Prio 1</span><span class="amp bald">${woche.length} in 7 Tagen</span><span class="amp ok">${fr.length} Termine</span></div>
+   ${tri.length?`<div class="toolbar" style="margin:10px 0 0"><button class="btn primary" data-act="triage">Überfälliges aufräumen (${tri.length})</button></div><div class="small muted" style="margin-top:4px">Je Aufgabe: neues Datum, erledigt oder entfällt – damit oben wieder nur steht, was wirklich dran ist.</div>`:''}</div>
+  <h2>Heute dran</h2>${focus.length?`<div class="list">${focus.map(x=>taskItem(x,true)).join('')}</div>`:'<div class="empty">Nichts mit Prio 1–2 fällig. 👍</div>'}
+  ${fr.length?`<h2>Termine &amp; Fristen · 7 Tage</h2><div class="list">${fr.map(f=>`<div class="item" data-act="sheet" data-s="Fristen" role="button" tabindex="0"><div class="nr">${WT[dateOf(f.d).getUTCDay()].slice(0,2)} ${fdate(f.d).slice(0,6)}</div><div class="main"><div class="t">${esc(f.was)}</div>${f.bem?`<div class="small muted clamp">${esc(f.bem)}</div>`:''}<div class="meta"><span>${esc(f.typ||'')}</span></div></div></div>`).join('')}</div>`:''}
+  <h2>Weitere</h2>
+  ${heute.length?box('heute','Fester Termin heute',heute.length,list(heute,40,'offen')):''}
+  ${box('ueber','Überfällig',ueber.length,list(ueber,12,'ueber'),true)}
+  ${box('woche','Diese Woche fällig',woche.length,list(woche,12,'offen'))}
+  ${wa.length?box('wartung','Wartung',wa.length,`<div class="list">${wa.map(w=>`<div class="item" data-act="sheet" data-s="Regelmäßige Wartung" role="button" tabindex="0"><div class="nr">${esc(w.id)}</div><div class="main"><div class="t">${esc(w.t)}</div><div class="meta"><span class="amp ${/überfällig/.test(w.st)?'überfällig':'bald'}">${esc(w.st)}</span></div></div></div>`).join('')}</div>`,true):''}
+  ${box('geld','Geld',6,`<div class="grid2">
    ${kpi('liquide heute',FIN.liquide(),0)}${kpi('nach Kaufabschluss',FIN.nachKauf(),0)}
    ${kpi('Renovierung eingeplant (netto)',KPV.netto(),0)}${kpi('Puffer Renovierung',KPV.puffer(),0)}
-   ${kpi('tiefster Kontostand (gemeinsam)',FIN.tiefst(),0)}${kpi('frei pro Monat jetzt (gemeinsam)',FIN.frei(),0)}
-  </div>
-  <h2>Offene Entscheidungen</h2><div class="list">${ent.map(x=>`<div class="item" data-act="tab" data-t="entsch"><div class="main"><div class="t">${esc(x.thema)}</div><div class="small muted clamp">${esc(x.txt)}</div><div class="meta"><span>${esc(x.st)}</span></div></div></div>`).join('')}</div>
-  <h2>Mehr</h2><div class="list"><div class="item" data-act="bericht" data-s="Stand der Dinge"><div class="main"><div class="t">Stand der Dinge</div><div class="small muted">Fokus, Termine, Themen in Kürze</div></div></div>
-  <div class="item" data-act="bericht" data-s="Arbeitsweise"><div class="main"><div class="t">Arbeitsweise</div><div class="small muted">Regeln für Änderungen (auch für Claude)</div></div></div></div>`; };
+   ${kpi('tiefster Kontostand (gemeinsam)',FIN.tiefst(),0)}${kpi('frei pro Monat jetzt (gemeinsam)',FIN.frei(),0)}</div>`)}
+  ${box('ent','Offene Entscheidungen',ent.length,`<div class="list">${ent.map(x=>`<div class="item" data-act="tab" data-t="entsch" role="button" tabindex="0"><div class="main"><div class="t">${esc(x.thema)}</div><div class="small muted clamp">${esc(x.txt)}</div><div class="meta"><span>${esc(x.st)}</span></div></div></div>`).join('')}</div>`)}
+  <h2>Mehr</h2><div class="list"><div class="item" data-act="bericht" data-s="Stand der Dinge" role="button" tabindex="0"><div class="main"><div class="t">Stand der Dinge</div><div class="small muted">Fokus, Termine, Themen in Kürze</div></div></div>
+  <div class="item" data-act="tab" data-t="eigen" role="button" tabindex="0"><div class="main"><div class="t">Eigenleistung</div><div class="small muted">Was ich selbst mache – Stunden, Fortschritt</div></div></div></div>`; };
 function kpi(l,v,d,cls){ const n=typeof v==='number'; return `<div class="card kpi ${n&&v<0?'bad':''}"><div class="l">${esc(l)}</div><div class="v">${n?feur(v,d):esc(fmtVal(v))}</div></div>`; }
 function todaySerial(){ const d=new Date(); return Math.round((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-Date.UTC(1899,11,30))/864e5); }
 function banner(){ const b=[]; if(!canSync()) b.push('Noch keine Verbindung eingerichtet – Änderungen bleiben auf diesem Gerät. <a href="#" data-act="tab" data-t="einst">Einstellungen</a>');
-  if(S.engine!=='bereit') b.push('Der Rechenkern startet (bis ca. 1 Minute). Anzeigen zeigen den letzten gespeicherten Stand; Änderungen werden danach eingerechnet.');
+  if(S.engine==='lädt'){ const est=LS.get('engMs',0); b.push(`<b>Rechenkern startet</b>${est?` (zuletzt ${Math.round(est/1000)} s)`:''}. Du kannst schon arbeiten – Änderungen erscheinen sofort, Summen und Folgewerte rechnen danach nach.<span id="engPend"></span><div class="prog" role="progressbar" aria-label="Start des Rechenkerns"><i id="engProg" style="width:0%"></i></div>`); }
+  else if(S.engine==='Fehler') b.push('Rechenkern-Fehler – App bitte neu laden.');
+  setTimeout(engProgress,0);
   return b.map(x=>`<div class="banner">${x}</div>`).join(''); }
-VIEWS.aufgaben=()=>{ const f=S.filter; let ts=tasks(); const q=(f.q||'').toLowerCase().trim();
-  const sets={offen:x=>x.st==='offen'||x.st==='läuft',prio1:x=>(x.st==='offen'||x.st==='läuft')&&x.prio===1,ueber:x=>(x.st==='offen'||x.st==='läuft')&&x.amp==='überfällig',eigen:x=>(x.st==='offen'||x.st==='läuft')&&/eigen/i.test(x.ausf),erledigt:x=>x.st==='erledigt',alle:x=>true};
-  ts=ts.filter(sets[f.a]||sets.offen); if(q) ts=ts.filter(x=>String(x.nr)===q||(x.t+' '+x.bem+' '+x.eig+' '+x.gew).toLowerCase().includes(q));
-  ts.sort(f.a==='erledigt'?(a,b)=>(V(RP,b.r,15)||0)-(V(RP,a.r,15)||0):sortDue);
-  const lim=ts.slice(0,300);
-  return `${banner()}<div class="toolbar"><input type="search" id="q" placeholder="Suchen (Nr. oder Stichwort)" value="${esc(f.q)}"></div>
-  <div class="seg toolbar">${[['offen','Offen'],['prio1','Prio 1'],['ueber','Überfällig'],['eigen','Eigenleistung'],['erledigt','Erledigt'],['alle','Alle']].map(([k,l])=>`<button data-act="filt" data-k="${k}" class="${f.a===k?'on':''}">${l}</button>`).join('')}</div>
-  <div class="small muted" style="margin:0 2px 8px">${ts.length} Aufgaben${ts.length>300?' · die ersten 300':''}</div>
-  <div class="list">${lim.map(x=>taskItem(x,true)).join('')||'<div class="empty">Nichts gefunden.</div>'}</div>`; };
+VIEWS.aufgaben=()=>{ const f=S.filter; const all=tasks(); const ts=U.filterTasks(all,f,todaySerial()); const lim=ts.slice(0,S.lim);
+  const uniq=k=>[...new Set(all.map(x=>x[k]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'de'));
+  const sel=(id,label,opts,cur)=>`<select id="${id}" aria-label="${label}"><option value="">${label}: alle</option>${opts.map(o=>`<option ${o===cur?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  const nf2=[f.et,f.gw,f.au].filter(Boolean).length;
+  return `${banner()}<div class="toolbar"><input type="search" id="q" placeholder="Suchen (Nr. oder Stichwort)" aria-label="Aufgaben durchsuchen" value="${esc(f.q)}"></div>
+  <div class="seg toolbar" role="group" aria-label="Auswahl">${[['offen','Offen'],['prio1','Prio 1'],['ueber','Überfällig'],['ohne','Ohne Datum'],['eigen','Eigenleistung'],['erledigt','Erledigt'],['alle','Alle']].map(([k,l])=>`<button data-act="filt" data-k="${k}" aria-pressed="${f.a===k}" class="${f.a===k?'on':''}">${l}</button>`).join('')}</div>
+  <details class="mini" ${S.fOpen||nf2?'open':''} id="fbox" style="margin:-2px 2px 10px"><summary>Filter &amp; Sortierung${nf2?` · ${nf2} aktiv`:''}</summary><div class="filters" style="margin-top:8px">
+   ${sel('f_et','Etappe',uniq('etappe'),f.et)}${sel('f_gw','Gewerk',uniq('gew'),f.gw)}${sel('f_au','Ausführung',uniq('ausf'),f.au)}
+   <select id="f_s" aria-label="Sortierung">${[['faellig','nach Fälligkeit'],['prio','nach Prio'],['nr','nach Nr. ↑'],['nrab','nach Nr. ↓ (neueste)'],['erl','zuletzt erledigt']].map(([k,l])=>`<option value="${k}" ${(f.s||(f.a==='erledigt'?'erl':'faellig'))===k?'selected':''}>${l}</option>`).join('')}</select>
+   ${nf2?`<button class="btn" data-act="freset">Filter zurücksetzen</button>`:''}</div></details>
+  <div class="small muted" style="margin:0 2px 8px">${ts.length} Aufgaben${ts.length>lim.length?' · '+lim.length+' angezeigt':''}</div>
+  <div class="list">${lim.map(x=>taskItem(x,true)).join('')||'<div class="empty">Nichts gefunden.</div>'}</div>
+  ${ts.length>lim.length?`<div class="toolbar" style="margin-top:10px"><button class="btn" data-act="more" data-k="lim">${Math.min(300,ts.length-lim.length)} weitere laden</button></div>`:''}`; };
 const FABS={aufgaben:['+ Aufgabe',()=>newTaskDlg()],wissen:['+ Eintrag',()=>newWSDlg()],kontakte:['+ Kontakt',()=>newContactDlg()]};
-function openDlg(title,body,foot){ const d=$('#dlg'); d.innerHTML=`<div class="hd"><h3>${title}</h3><button class="x" data-act="close" aria-label="Schließen">✕</button></div><div class="bd">${body}${foot?`<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">${foot}</div>`:''}</div>`; if(!d.open) d.showModal(); return d; }
-$('#dlg').addEventListener('click',e=>{ if(e.target.id==='dlg') e.target.close(); });
+/* Dialog: Kopf oben, Knöpfe unten immer sichtbar. Wer ungespeicherte Eingaben hat, wird vor dem Schließen gefragt. */
+function formState(d){ return [...d.querySelectorAll('.bd input:not([type=file]),.bd select,.bd textarea')].map(e=>e.type==='checkbox'?e.checked:e.value).join('\u0001'); }
+function openDlg(title,body,foot){ const d=$('#dlg'); d.innerHTML=`<div class="hd"><h3 id="dlgTitle">${title}</h3><button class="x" data-act="close" aria-label="Schließen">✕</button></div><div class="bd">${body}</div>${foot?`<div class="ft">${foot}</div>`:''}`;
+  if(!d.open) d.showModal(); d.scrollTop=0; d._init=formState(d); d._guard=!!(foot&&/id="sv"|id="ok"/.test(foot)); return d; }
+function tryClose(){ const d=$('#dlg'); if(!d.open) return; if(d._guard&&formState(d)!==d._init&&!d.querySelector('.confirm')){
+    const c=document.createElement('div'); c.className='confirm'; c.innerHTML='<span style="flex:1;min-width:150px">Ungespeicherte Änderungen.</span><button class="btn" data-cf="back">Weiter bearbeiten</button><button class="btn danger" data-cf="drop">Verwerfen</button>';
+    const ft=d.querySelector('.ft'); (ft||d.querySelector('.bd')).prepend(c); c.querySelector('[data-cf=back]').onclick=()=>c.remove(); c.querySelector('[data-cf=drop]').onclick=()=>d.close(); return; }
+  d.close(); }
+$('#dlg').addEventListener('click',e=>{ if(e.target.id==='dlg') tryClose(); });
+$('#dlg').addEventListener('cancel',e=>{ e.preventDefault(); tryClose(); });
 function fieldFor(n,r,c,label,opts){ opts=opts||{}; const formula=isF(n,r,c); const v=V(n,r,c); const list=listFor(n,r,c)||opts.list; const id=`f_${c}`;
   if(formula||opts.ro) return `<label class="f"><span>${esc(label)}${formula?' · automatisch':''}</span><div class="ro">${esc(F(n,r,c))||'–'}</div></label>`;
   if(list) return `<label class="f"><span>${esc(label)}</span><select id="${id}" data-c="${c}"><option value=""></option>${list.map(o=>`<option ${String(v)===o?'selected':''}>${esc(o)}</option>`).join('')}${v!=null&&v!==''&&!list.includes(String(v))?`<option selected>${esc(v)}</option>`:''}</select></label>`;
@@ -387,8 +477,10 @@ function taskDlg(nr){ const r=findRow(RP,0,nr); if(r<0) return; const t=statusTa
    ${fieldFor(RP,r,1,'Aufgabe',{long:true})}
    <div class="row2"><label class="f"><span>Status${t.sheet==='Kostenplan'?' · wird im Kostenplan geführt':''}</span><select id="st">${['offen','läuft','erledigt','entfällt'].map(o=>`<option ${V(RP,r,2)===o?'selected':''}>${o}</option>`).join('')}</select></label>${fieldFor(RP,r,3,'Prio (1–10)',{num:true})}</div>
    <div class="row2">${fieldFor(RP,r,5,'Gewerk')}${fieldFor(RP,r,6,'Ausführung')}</div>
-   <div class="row2">${fieldFor(RP,r,25,'Fällig bis (eigenes Datum)',{date:true})}${fieldFor(RP,r,7,'Abhängig von (Nr.)')}</div>
-   ${fieldFor(RP,r,12,'Bemerkungen',{long:true})}${fieldFor(RP,r,13,'Eigene Bemerkungen',{long:true})}
+   <div class="own">${fieldFor(RP,r,13,'Meine Bemerkungen',{long:true})}</div>
+   <div>${fieldFor(RP,r,25,'Fällig bis (eigenes Datum)',{date:true})}<div class="quick" role="group" aria-label="Fälligkeit schnell setzen">${[['0','Heute'],['7','+1 Woche'],['m1','+1 Monat'],['m3','+3 Monate'],['x','kein Datum']].map(([k,l])=>`<button type="button" data-due="${k}">${l}</button>`).join('')}</div></div>
+   ${fieldFor(RP,r,7,'Abhängig von (Nr.)')}
+   <details class="mini" ${S.bemOpen?'open':''}><summary>Bemerkungen (Hinweise, Verlauf)${V(RP,r,12)?' · '+esc(String(V(RP,r,12)).slice(0,50))+'…':''}</summary>${fieldFor(RP,r,12,'Bemerkungen',{long:true})}</details>
    <div class="kv"><div class="k">Fällig bis (auto)</div><div class="v">${esc(F(RP,r,26))||'–'}</div><div class="k">Spätestens anstoßen</div><div class="v">${esc(F(RP,r,27))||'–'}</div>
    <div class="k">Blockiert durch</div><div class="v">${esc(F(RP,r,8))||'–'}</div><div class="k">Hinweise</div><div class="v">${esc(F(RP,r,9))||'–'}</div>
    <div class="k">Kosten Stand</div><div class="v">${esc(feur(V(RP,r,10)))}</div><div class="k">Etappe</div><div class="v">${esc(V(RP,r,18))||'–'}</div>
@@ -399,6 +491,9 @@ function taskDlg(nr){ const r=findRow(RP,0,nr); if(r<0) return; const t=statusTa
    ${ws.length?`<h2 style="margin:6px 0 0">Wissen (${ws.length})</h2><div class="list ws">${ws.slice(-12).reverse().map(i=>wsItem(i)).join('')}</div>`:''}`;
   setTimeout(()=>loadTaskFotos(nr),0);
   const d=openDlg(`Nr. ${nr}`,body,`<button class="btn" data-act="ws-for" data-nr="${nr}">+ Wissen</button><button class="btn" data-act="sheet-row" data-s="${RP}" data-r="${r}">Im Blatt</button><button class="btn primary" id="sv">Speichern</button>`);
+  d.querySelectorAll('[data-due]').forEach(b=>b.onclick=()=>{ const k=b.dataset.due, T=todaySerial(); const inp=d.querySelector('#f_25'); if(!inp) return;
+    const sn=k==='x'?null:k==='m1'?U.addMonths(T,1):k==='m3'?U.addMonths(T,3):T+Number(k); inp.value=sn==null?'':U.toDate(sn).toISOString().slice(0,10); inp.dispatchEvent(new Event('input',{bubbles:true})); });
+  d.querySelector('details.mini').ontoggle=e=>{ S.bemOpen=e.target.open; };
   d.querySelector('#sv').onclick=async()=>{ const st=d.querySelector('#st').value; const bd=d.querySelector('.bd'); const cells=collectFields(RP,r,bd); const stCh=st!==V(RP,r,2); d.close();
     if(stCh&&t.sheet===RP){ await setStatus(nr,st,{sheet:RP,cells}); }
     else { if(Object.keys(cells).length) await doOp({op:'sets',sheet:RP,key:nr,r,cells}); if(stCh) await setStatus(nr,st); }
@@ -445,12 +540,20 @@ function kpDlg(r){ const nr=V(KP,r,0);
 const WS='Wissensspeicher';
 function wsItem(i,q){ const hl=s=>{ s=esc(s); if(!q) return s; return s.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark class="hi">${m}</mark>`); };
   const st=V(WS,i,7)||''; return `<div class="item" data-act="wsd" data-r="${i}"><div class="nr">${esc(V(WS,i,0))}</div><div class="main"><div class="t clamp">${hl(V(WS,i,5))}</div>
-   <div class="meta"><span>${esc(fmtVal(V(WS,i,1),'dd.mm.yyyy'))}</span>${V(WS,i,2)!=null?`<span>Nr. ${esc(V(WS,i,2))}</span>`:''}<span>${esc(V(WS,i,3)||'')}</span>${st&&st!=='aktuell'?`<span class="pill">${esc(st)}</span>`:''}</div></div></div>`; }
-VIEWS.wissen=()=>{ const q=(S.filter.w||'').trim(); const n=rowsOf(WS); let rows=[]; for(let i=n-1;i>=1;i--){ if(V(WS,i,0)) rows.push(i); }
+   <div class="meta"><span>${esc(fmtVal(V(WS,i,1),'dd.mm.yyyy'))}</span>${U.numList(V(WS,i,2)).slice(0,6).map(n=>`<button class="lnk" data-act="task" data-nr="${n}" aria-label="Aufgabe ${n} öffnen">Nr. ${n}</button>`).join('')}<span>${esc(V(WS,i,3)||'')}</span>${st&&st!=='aktuell'?`<span class="pill">${esc(st)}</span>`:''}</div></div></div>`; }
+VIEWS.wissen=()=>{ const q=(S.filter.w||'').trim(); const th=S.filter.wthema||'', ty=S.filter.wtyp||''; const n=rowsOf(WS); let rows=[]; for(let i=n-1;i>=1;i--){ if(V(WS,i,0)) rows.push(i); }
+  const cnt=c=>{ const m=new Map(); rows.forEach(i=>{ const v=String(V(WS,i,c)||'').trim(); if(v) m.set(v,(m.get(v)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]); };
+  const themen=cnt(3), typen=cnt(4);
+  if(th) rows=rows.filter(i=>String(V(WS,i,3)||'').trim()===th); if(ty) rows=rows.filter(i=>String(V(WS,i,4)||'').trim()===ty);
   if(q){ const ql=q.toLowerCase(); rows=rows.filter(i=>{ const nr=V(WS,i,2); if(/^\d+$/.test(q)&&nr!=null&&(','+String(nr).replace(/\s/g,'')+',').includes(','+q+',')) return true; return [0,3,4,5,6,8].some(c=>String(V(WS,i,c)||'').toLowerCase().includes(ql)); }); }
-  return `<div class="toolbar"><input type="search" id="wq" placeholder="Suchen: Nr., W-Nummer oder Stichwort" value="${esc(q)}"></div>
-   <div class="small muted" style="margin:0 2px 8px">${rows.length} Einträge${rows.length>200?' · die neuesten 200':''}</div><div class="list ws">${rows.slice(0,200).map(i=>wsItem(i,q.length>2&&!/^\d+$/.test(q)?q:'')).join('')}</div>`; };
-function wsDlg(i){ const id=V(WS,i,0); const d=openDlg(esc(id),`${fieldFor(WS,i,5,'Inhalt',{long:true})}
+  const opt=(L,cur)=>L.map(([v,c])=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(v)} (${c})</option>`).join('');
+  return `<div class="toolbar"><input type="search" id="wq" placeholder="Suchen: Nr., W-Nummer oder Stichwort" aria-label="Wissen durchsuchen" value="${esc(q)}"></div>
+   <div class="seg toolbar" role="group" aria-label="Häufige Themen"><button data-act="wth" data-k="" class="${th?'':'on'}" aria-pressed="${!th}">alle</button>${themen.slice(0,8).map(([v])=>`<button data-act="wth" data-k="${esc(v)}" class="${th===v?'on':''}" aria-pressed="${th===v}">${esc(v)}</button>`).join('')}</div>
+   <div class="filters"><select id="wthema" aria-label="Thema"><option value="">Thema: alle</option>${opt(themen,th)}</select><select id="wtyp" aria-label="Typ"><option value="">Typ: alle</option>${opt(typen,ty)}</select></div>
+   <div class="small muted" style="margin:0 2px 8px">${rows.length} Einträge${rows.length>S.wlim?' · die neuesten '+S.wlim:''}</div><div class="list ws">${rows.slice(0,S.wlim).map(i=>wsItem(i,q.length>2&&!/^\d+$/.test(q)?q:'')).join('')||'<div class="empty">Nichts gefunden.</div>'}</div>
+   ${rows.length>S.wlim?`<div class="toolbar" style="margin-top:10px"><button class="btn" data-act="more" data-k="wlim">200 weitere laden</button></div>`:''}`; };
+function wsDlg(i){ const id=V(WS,i,0); const refs=[...new Set(U.numList(V(WS,i,2)).concat(U.taskRefs(V(WS,i,5))))].filter(n=>findRow(RP,0,n)>=0);
+  const d=openDlg(esc(id),`${refs.length?`<div class="meta" style="display:flex;gap:6px;flex-wrap:wrap"><span class="small muted">Aufgaben:</span>${refs.slice(0,20).map(n=>`<button class="lnk" data-act="task" data-nr="${n}" title="${esc(String(V(RP,findRow(RP,0,n),1)||'').slice(0,100))}">Nr. ${n}</button>`).join('')}</div>`:''}${fieldFor(WS,i,5,'Inhalt',{long:true})}
    <div class="row2">${fieldFor(WS,i,1,'Datum')}${fieldFor(WS,i,2,'Nr.')}</div><div class="row2">${fieldFor(WS,i,3,'Thema')}${fieldFor(WS,i,4,'Typ')}</div>
    <div class="row2">${fieldFor(WS,i,6,'Quelle')}${fieldFor(WS,i,7,'Status')}</div>${fieldFor(WS,i,8,'Aufgabe / Dokument',{long:true})}`,`<button class="btn primary" id="sv">Speichern</button>`);
   d.querySelector('#sv').onclick=async()=>{ const bd=d.querySelector('.bd'); const cells=collectFields(WS,i,bd); d.close(); if(Object.keys(cells).length) await doOp({op:'sets',sheet:WS,key:id,r:i,cells}); toast(Object.keys(cells).length?'Gespeichert':'Keine Änderung'); }; }
@@ -460,13 +563,19 @@ function newWSDlg(nr){ const d=openDlg('Neuer Wissenseintrag',`<label class="f">
   d.querySelector('#ok').onclick=async()=>{ const inhalt=d.querySelector('#wi').value.trim(); if(!inhalt){ toast('Bitte Inhalt eintragen'); return; } const nrs=d.querySelector('#wn').value.trim();
     d.close(); const res=await doOp({op:'ws',fields:{inhalt,nr:nrs?(/^\d+$/.test(nrs)?Number(nrs):nrs):null,thema:d.querySelector('#wt').value.trim(),typ:d.querySelector('#wy').value,quelle:d.querySelector('#wq2').value.trim()}}); toast(res?res.id+' angelegt':'Eintrag vorgemerkt'); }; }
 /* ============================== Mehr ============================== */
-VIEWS.mehr=()=>{ const items=[['finanzen','Finanzen','Überblick, Konten, Prognose'],['kontakte','Kontakte','Handwerker, Behörden, Bank'],['entsch','Entscheidungen','was gilt, was ist offen'],
+const MEHR=[['finanzen','Finanzen','Überblick, Konten, Prognose'],['eigen','Eigenleistung','was ich selbst mache, Fortschritt'],['einkauf','Einkaufsliste','abhaken im Baumarkt'],['galerie','Fotos & Bilder','alle Fotos und Pläne'],
+   ['kontakte','Kontakte','Handwerker, Behörden, Bank'],['entsch','Entscheidungen','was gilt, was ist offen'],
    ['bericht:Stand der Dinge','Stand der Dinge','Startblatt'],['bericht:Übersicht','Übersicht','Kennzahlen'],['blatt:Fristen','Fristen','Termine und Fristen'],['blatt:Kosten','Kosten (Belege)','Angebote, Rechnungen, Schätzungen'],
-   ['blatt:Einkaufsliste','Einkaufsliste',''],['blatt:Material','Material',''],['blatt:Werkzeug','Werkzeug',''],['blatt:Regelmäßige Wartung','Wartung',''],['blatt:Feuchtemessung','Feuchtemessung',''],['bericht:Arbeitsweise','Arbeitsweise','Regeln'],['einst','Einstellungen','Verbindung, Export, Version']];
-  const names=S.wb.sheets.filter(s=>S.showHidden||!s.hidden);
-  return `<div class="sheets">${items.map(([k,l,s])=>`<button data-act="mehr" data-k="${esc(k)}"><b>${esc(l)}</b><span class="small muted">${esc(s)}</span></button>`).join('')}</div>
-   <h2>Alle Blätter (${names.length})</h2><div class="toolbar"><label class="small"><input type="checkbox" id="hid" ${S.showHidden?'checked':''}> ausgeblendete zeigen</label></div>
-   <div class="sheets">${names.map(s=>`<button data-act="mehr" data-k="blatt:${esc(s.name)}">${esc(s.name)}${s.hidden?' <span class="small muted">(ausgeblendet)</span>':''}</button>`).join('')}</div>`; };
+   ['blatt:Material','Material',''],['blatt:Werkzeug','Werkzeug',''],['blatt:Regelmäßige Wartung','Wartung',''],['blatt:Feuchtemessung','Feuchtemessung',''],['bericht:Arbeitsweise','Arbeitsweise','Regeln'],['einst','Einstellungen','Verbindung, Export, Version']];
+function mehrLabel(k){ const m=MEHR.find(x=>x[0]===k); return m?m[1]:k.replace(/^(blatt|bericht):/,''); }
+VIEWS.mehr=()=>{ const q=(S.mq||'').toLowerCase().trim(); const hit=t=>!q||String(t).toLowerCase().includes(q);
+  const items=MEHR.filter(([k,l,s])=>hit(l+' '+s)); const names=S.wb.sheets.filter(s=>(S.showHidden||!s.hidden||q)&&hit(s.name)); const rec=LS.get('recent',[]).filter(k=>!q);
+  const tile=(k,l,s)=>`<button data-act="mehr" data-k="${esc(k)}"><b>${esc(l)}</b>${s?`<span class="small muted">${esc(s)}</span>`:''}</button>`;
+  return `<div class="toolbar"><input type="search" id="mq" placeholder="Blatt oder Bereich suchen" aria-label="Blätter durchsuchen" value="${esc(S.mq||'')}"></div>
+   ${rec.length?`<h2>Zuletzt geöffnet</h2><div class="sheets">${rec.map(k=>tile(k,mehrLabel(k),'')).join('')}</div><h2>Bereiche</h2>`:''}
+   <div class="sheets">${items.map(([k,l,s])=>tile(k,l,s)).join('')}</div>
+   <h2>Alle Blätter (${names.length})</h2>${q?'':`<div class="toolbar"><label class="small"><input type="checkbox" id="hid" ${S.showHidden?'checked':''}> ausgeblendete zeigen</label></div>`}
+   <div class="sheets">${names.map(s=>`<button data-act="mehr" data-k="blatt:${esc(s.name)}">${esc(s.name)}${s.hidden?' <span class="small muted">(ausgeblendet)</span>':''}</button>`).join('')||'<div class="empty">Kein Blatt gefunden.</div>'}</div>`; };
 VIEWS.finanzen=()=>`${banner()}${chartsHTML()}<div class="card report" style="margin-top:12px">${reportHTML('Finanzen Überblick')}</div><h2>Weitere Blätter</h2><div class="sheets">${['Budget','Einmalzahlungen & Kredite','Liquidität','Konto Ist','Förderung','Nachweis Bank','Laufende Kosten','Finanzplan'].map(n=>`<button data-act="mehr" data-k="blatt:${esc(n)}">${esc(n)}</button>`).join('')}</div>`;
 /* Diagramme der früheren ODS (Kontostand-Prognose) als SVG – Daten direkt aus den Blättern */
 function seriesBlock(n,xCol,cols){ const s=sh(n); if(!s) return null; let r0=-1; for(let r=0;r<s.inp.length;r++){ const x=V(n,r,xCol); if(typeof x==='number'&&x>40000&&x<60000&&cols.every(c=>typeof V(n,r,c)==='number')){ r0=r; break; } }
@@ -516,10 +625,57 @@ VIEWS.einst=()=>{ const s=S.settings; return `<div class="card" style="display:f
    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="export">Als Excel-Datei exportieren</button><label class="btn">Arbeitsmappe laden (JSON)<input type="file" id="imp" accept=".json,application/json" hidden></label>
    <button class="btn danger" data-act="reset">Lokale Daten löschen</button></div>
    <div class="small muted">Die Excel-Datei enthält alle Blätter mit Formeln und lässt sich in LibreOffice öffnen und als .ods speichern – als Sicherung oder für den Notfall.</div></div>`; };
+/* ============================== Eigenleistung ============================== */
+const EL='Eigenleistung';
+VIEWS.eigen=()=>{ if(!sh(EL)) return '<div class="empty">Blatt Eigenleistung fehlt.</div>';
+  const hr=rowByLabel(EL,0,'Nr.'); const n=rowsOf(EL); const rows=[]; for(let r=hr+1;r<n;r++){ const nr=V(EL,r,0); if(typeof nr!=='number') break; rows.push(r); }
+  const hwR=rowByLabel(EL,0,'Stunden pro Woche',true); const hw=hwR>=0?V(EL,hwR,4):null;
+  const sumR=rowByLabel(EL,0,'Summe „selbst“',true), wkR=rowByLabel(EL,0,'Wochen bei Eingabe E3 (Std./Woche) für „selbst',true);
+  const f=S.filter.el||'selbst'; const isSelf=r=>/selbst/.test(String(V(EL,r,6)||''));
+  const sel=rows.filter(r=>f==='alle'?true:f==='selbst'?isSelf(r):f==='offen'?!V(EL,r,6)||V(EL,r,6)==='offen':V(EL,r,6)===f);
+  const mine=rows.filter(isSelf); const done=mine.filter(r=>V(EL,r,8)==='erledigt'); const hAll=mine.reduce((a,r)=>a+(typeof V(EL,r,4)==='number'?V(EL,r,4):0),0), hDone=done.reduce((a,r)=>a+(typeof V(EL,r,4)==='number'?V(EL,r,4):0),0);
+  const noEst=mine.filter(r=>typeof V(EL,r,4)!=='number').length;
+  const groups=U.groupBy(sel.map(r=>({r,et:V(EL,r,7)||'ohne Etappe'})),x=>x.et).sort((a,b)=>String(a[0]).localeCompare(String(b[0]),'de'));
+  return `${banner()}<div class="grid2">${kpi('Punkte „selbst“',mine.length+' ('+done.length+' erledigt)')}${kpi('Stunden (Schätzung)',nf(0).format(hAll)+' h')}
+   <div class="card kpi" data-act="cell" data-s="${EL}" data-r="${hwR}" data-c="4" role="button" tabindex="0" style="cursor:pointer"><div class="l">Stunden pro Woche (antippen)</div><div class="v">${esc(hw??'–')} h</div></div>
+   ${kpi('Wochen bis fertig (Schätzung)',wkR>=0&&typeof V(EL,wkR,4)==='number'?V(EL,wkR,4)+' Wochen':'–')}</div>
+   <div class="card" style="margin-top:10px"><div class="small muted">Fortschritt nach Stunden: ${nf(0).format(hDone)} von ${nf(0).format(hAll)} h${noEst?` · ${noEst} Punkte noch ohne Stundenschätzung`:''}</div><div class="prog"><i style="width:${hAll?Math.round(100*hDone/hAll):0}%"></i></div>
+   ${sumR>=0?`<div class="small muted" style="margin-top:6px">Ersparnis ggü. Firma (SCHÄTZUNG): ${esc(feur(V(EL,sumR,5)))}</div>`:''}</div>
+   <div class="seg toolbar" style="margin-top:12px" role="group" aria-label="Entscheidung">${[['selbst','selbst'],['Firma','Firma'],['offen','offen'],['alle','alle']].map(([k,l])=>`<button data-act="elf" data-k="${k}" class="${f===k?'on':''}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>
+   ${groups.map(([et,L])=>`<h2>${esc(et)} <span class="cnt">${L.length}</span></h2><div class="list">${L.map(({r})=>{ const nr=V(EL,r,0), st=V(EL,r,8)||'';
+     return `<div class="item ${st==='erledigt'?'gone':''}" data-act="task" data-nr="${nr}" role="button" tabindex="0"><div class="nr">${esc(nr)}</div><div class="main"><div class="t clamp">${esc(V(EL,r,1))}</div>
+      <div class="meta"><span class="pill ${esc(st)}">${esc(st||'–')}</span><span>${esc(V(EL,r,2)||'')}</span>${typeof V(EL,r,4)==='number'?`<span>${V(EL,r,4)} h</span>`:'<span>Std. offen</span>'}
+      <button class="lnk" data-act="cell" data-s="${EL}" data-r="${r}" data-c="6" aria-label="Entscheidung ändern">${esc(V(EL,r,6)||'Entscheidung?')}</button></div>
+      ${V(EL,r,3)?`<div class="small muted clamp">${esc(V(EL,r,3))}</div>`:''}</div></div>`; }).join('')}</div>`).join('')||'<div class="empty">Keine Punkte.</div>'}
+   <div class="toolbar" style="margin-top:14px"><button class="btn" data-act="mehr" data-k="blatt:${EL}">Als Tabelle</button></div>`; };
+/* ============================== Einkaufsliste (abhaken) ============================== */
+const EK='Einkaufsliste';
+VIEWS.einkauf=()=>{ if(!sh(EK)) return '<div class="empty">Blatt Einkaufsliste fehlt.</div>'; const n=rowsOf(EK); const f=S.filter.ek||'offen';
+  const rows=[]; for(let r=1;r<n;r++){ if(V(EK,r,2)) rows.push(r); } const got=r=>String(V(EK,r,0)||'').toLowerCase()==='ja';
+  const sel=rows.filter(r=>f==='alle'||(f==='offen'?!got(r):got(r))); const sum=sel.filter(r=>!got(r)).reduce((a,r)=>a+(typeof V(EK,r,6)==='number'?V(EK,r,6):0),0);
+  const groups=U.groupBy(sel,r=>V(EK,r,1));
+  return `${banner()}<div class="seg toolbar" role="group" aria-label="Auswahl">${[['offen','noch kaufen'],['gekauft','gekauft'],['alle','alle']].map(([k,l])=>`<button data-act="ekf" data-k="${k}" class="${f===k?'on':''}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>
+   <div class="small muted" style="margin:0 2px 8px">${sel.length} Positionen${sum?' · noch offen ca. '+feur(sum):''}</div>
+   ${groups.map(([g,L])=>`<h2>${esc(g)} <span class="cnt">${L.length}</span></h2><div class="list">${L.map(r=>`<div class="item ${got(r)?'gone':''}"><span class="chk ${got(r)?'on':''}" data-act="ekchk" data-r="${r}" role="checkbox" aria-checked="${got(r)}" tabindex="0" aria-label="gekauft: ${esc(V(EK,r,2))}">${got(r)?'✓':''}</span>
+     <div class="main" data-act="rowcard" data-s="${EK}" data-r="${r}" role="button" tabindex="0"><div class="t">${esc(V(EK,r,2))}</div><div class="meta">${V(EK,r,4)?`<span>Menge ${esc(V(EK,r,4))}</span>`:''}${V(EK,r,6)!=null?`<span>ca. ${esc(F(EK,r,6))}${typeof V(EK,r,6)==='number'?' €':''}</span>`:''}${V(EK,r,5)?`<span>${esc(V(EK,r,5))}</span>`:''}${U.numList(V(EK,r,3)).slice(0,3).map(x=>`<button class="lnk" data-act="task" data-nr="${x}">Nr. ${x}</button>`).join('')}</div>
+     ${V(EK,r,7)?`<div class="small muted clamp">${esc(V(EK,r,7))}</div>`:''}</div></div>`).join('')}</div>`).join('')||'<div class="empty">Nichts.</div>'}
+   <div class="toolbar" style="margin-top:14px"><button class="btn" data-act="mehr" data-k="blatt:${EK}">Als Tabelle</button></div>`; };
+/* ============================== Galerie ============================== */
+VIEWS.galerie=()=>{ const L=[]; const fo=S.wb.fotos||{}; Object.keys(fo).sort((a,b)=>b-a).forEach(nr=>fo[nr].forEach(f=>L.push({p:f.path,lab:'Nr. '+nr,nr:Number(nr),date:f.date||''})));
+  L.sort((a,b)=>b.p.localeCompare(a.p)); const im=S.wb.images||{}; const L2=[]; Object.keys(im).forEach(n=>im[n].forEach(p=>L2.push({p,lab:n,sheet:n})));
+  setTimeout(loadGallery,0);
+  const tile=(x,i)=>`<button data-act="gal" data-i="${i}" aria-label="${esc(x.lab)}"><img alt="${esc(x.lab)}" data-src="${esc(x.p)}"><span>${esc(x.lab)}</span></button>`;
+  S.gal=L.concat(L2);
+  return `${canSync()?'':banner()}<h2>Fotos an Aufgaben <span class="cnt">${L.length}</span></h2>${L.length?`<div class="gal">${L.map(tile).join('')}</div>`:'<div class="empty">Noch keine Fotos. Im Aufgabendialog: „📷 Foto hinzufügen“.</div>'}
+   <h2>Bilder aus der Arbeitsmappe <span class="cnt">${L2.length}</span></h2><div class="gal">${L2.map((x,i)=>tile(x,i+L.length)).join('')}</div>`; };
+async function loadGallery(){ for(const img of document.querySelectorAll('.gal img[data-src]')){ if(S.tab!=='galerie') return; const u=await imgURL(img.dataset.src); if(u) img.src=u; img.removeAttribute('data-src'); } }
+function galDlg(i){ const x=S.gal[i]; if(!x) return; imgURL(x.p).then(u=>{ openDlg(esc(x.lab)+(x.date?' · '+esc(x.date):''),u?`<img src="${u}" alt="${esc(x.lab)}" style="width:100%;border-radius:8px">`:'<div class="empty">Bild nicht geladen.</div>',
+   `${x.nr?`<button class="btn" data-act="task" data-nr="${x.nr}">Aufgabe öffnen</button>`:`<button class="btn" data-act="sheet" data-s="${esc(x.sheet)}">Blatt öffnen</button>`}${i>0?`<button class="btn" data-act="gal" data-i="${i-1}">‹</button>`:''}${i<S.gal.length-1?`<button class="btn" data-act="gal" data-i="${i+1}">›</button>`:''}`); }); }
 /* ============================== Tabellenansicht (alle Blätter) ============================== */
 VIEWS.blatt=()=>{ const n=S.sheetView; const s=sh(n); if(!s) return '<div class="empty">Blatt nicht gefunden.</div>';
   const imgs=(S.wb.images&&S.wb.images[n])||[];
-  return `<div class="toolbar"><button class="btn" data-act="tab" data-t="mehr">‹ Blätter</button><b style="flex:1;min-width:0;overflow-wrap:anywhere;font-size:16px">${esc(n)}</b></div><div class="toolbar"><input type="search" id="gq" placeholder="in diesem Blatt suchen" value="${esc(S.gridQ||'')}"></div>
+  return `<div class="toolbar"><button class="btn" data-act="tab" data-t="mehr">‹ Blätter</button><b style="flex:1;min-width:0;overflow-wrap:anywhere;font-size:16px">${esc(n)}</b></div><div class="toolbar"><input type="search" id="gq" placeholder="in diesem Blatt suchen" aria-label="in diesem Blatt suchen" value="${esc(S.gridQ||'')}" style="flex:1;width:auto"><button class="btn" data-act="cols">Spalten${LS.get('cols:'+n,[]).length?' ('+LS.get('cols:'+n,[]).length+' aus)':''}</button></div>
+   <div class="small muted" style="margin:-4px 2px 8px">Tipp auf eine Zeilennummer${matchMedia('(max-width:700px)').matches?' oder Zelle':''} zeigt die ganze Zeile als Karte.</div>
    ${imgs.length?`<div class="imgs" id="imgs" data-s="${esc(n)}"></div>`:''}<div class="tablewrap" id="tw"><table class="g" id="gt"></table></div>`; };
 const RH=31;
 /* Bedingte Farben (aus der ODS übernommen bzw. sinngemäß): Prio-Farbskala, gestrichene Kosten, Status und Ampeln */
@@ -535,14 +691,14 @@ function condStyle(n,r,c){ if(r===0) return '';
   if(n==='Kostenplan'&&c===2&&r>0){ const x=STC[V(n,r,c)]; return x?`background:${x[0]};color:${x[1]};`:''; }
   return ''; }
 function gridAfter(){ const n=S.sheetView; const s=sh(n); const tw=$('#tw'); if(!tw) return; loadImgs(n);
-  const W=Math.max(1,...s.inp.map(r=>r.length)); const cols=[]; for(let c=0;c<W;c++){ if(s.hiddenCols&&s.hiddenCols.includes(c)) continue; cols.push(c); }
+  const W=Math.max(1,...s.inp.map(r=>r.length)); const off=new Set(LS.get('cols:'+n,[])); const cols=[]; for(let c=0;c<W;c++){ if(s.hiddenCols&&s.hiddenCols.includes(c)) continue; if(off.has(c)) continue; cols.push(c); }
   const hid=new Set(s.hiddenRows||[]); let rows=[]; for(let r=0;r<s.inp.length;r++) if(!hid.has(r)) rows.push(r);
   const q=(S.gridQ||'').toLowerCase(); if(q) rows=rows.filter(r=>r===0||cols.some(c=>F(n,r,c).toLowerCase().includes(q)));
   const width=c=>Math.max(44,Math.min(420,Math.round((s.cols[c]||80)*.9)));
   const draw=()=>{ const top=tw.scrollTop, h=tw.clientHeight||600; const i0=Math.max(0,Math.floor(top/RH)-10), i1=Math.min(rows.length,Math.ceil((top+h)/RH)+10);
     let html=`<thead><tr><th class="corner rh"></th>${cols.map(c=>`<th style="min-width:${width(c)}px;max-width:${width(c)}px">${colStr(c)}</th>`).join('')}</tr></thead><tbody>`;
     if(i0>0) html+=`<tr style="height:${i0*RH}px"><td colspan="${cols.length+1}" style="border:0;background:none"></td></tr>`;
-    for(let i=i0;i<i1;i++){ const r=rows[i]; html+=`<tr><td class="rh">${r+1}</td>`;
+    for(let i=i0;i<i1;i++){ const r=rows[i]; html+=`<tr><td class="rh" data-row="${r}" role="button" tabindex="0" aria-label="Zeile ${r+1} als Karte">${r+1}</td>`;
       for(const c of cols){ const t=F(n,r,c); const f=isF(n,r,c); const st=s.sty[r+','+c]&&S.wb.styles[s.sty[r+','+c]]; const v=V(n,r,c);
         const css=(st&&st.bg?`background:${st.bg};color:${st.fg||'#222'};`:(st&&st.fg?`color:${st.fg};`:''))+(st&&st.b?'font-weight:650;':'')+(typeof v==='number'?'text-align:right;':'')+(typeof v==='number'&&v<0?'color:var(--bad);':'')+condStyle(n,r,c);
         html+=`<td class="${f?'f ':''}${s.dv[r+','+c]?'dv':''}" data-r="${r}" data-c="${c}" style="min-width:${width(c)}px;max-width:${width(c)}px;${css}" title="${esc(t.length>40?t:'')}">${esc(t)}</td>`; }
@@ -550,7 +706,23 @@ function gridAfter(){ const n=S.sheetView; const s=sh(n); const tw=$('#tw'); if(
     if(i1<rows.length) html+=`<tr style="height:${(rows.length-i1)*RH}px"><td colspan="${cols.length+1}" style="border:0;background:none"></td></tr>`;
     $('#gt').innerHTML=html+'</tbody>'; };
   draw(); let raf=0; tw.onscroll=()=>{ cancelAnimationFrame(raf); raf=requestAnimationFrame(draw); };
-  $('#gt').onclick=e=>{ const td=e.target.closest('td[data-r]'); if(td) cellDlg(n,Number(td.dataset.r),Number(td.dataset.c)); }; }
+  $('#gt').onclick=e=>{ const rh=e.target.closest('td[data-row]'); if(rh){ rowDlg(n,Number(rh.dataset.row)); return; } const td=e.target.closest('td[data-r]'); if(!td) return;
+    if(matchMedia('(max-width:700px)').matches) rowDlg(n,Number(td.dataset.r),Number(td.dataset.c)); else cellDlg(n,Number(td.dataset.r),Number(td.dataset.c)); }; }
+/* Kopfzeile eines Blatts: unter den ersten 12 Zeilen die mit den meisten Textzellen (mind. 3) */
+function hdrRow(n,r){ const s=sh(n); let best=-1,bn=2; for(let i=0;i<Math.min(12,s.inp.length,r==null?12:r);i++){ let k=0; for(let c=0;c<(s.inp[i]||[]).length;c++){ const v=V(n,i,c); if(typeof v==='string'&&v.trim()&&v.length<80) k++; } if(k>bn){ bn=k; best=i; } } return best; }
+/* Zeile als Karte: alle Spalten untereinander, jede Zelle antippen = bearbeiten */
+function rowDlg(n,r,focusC){ const s=sh(n); const h=hdrRow(n,r); const W=Math.max(1,...s.inp.map(x=>x.length));
+  const items=[]; for(let c=0;c<W;c++){ if(s.hiddenCols&&s.hiddenCols.includes(c)) continue; const t=F(n,r,c); const lab=h>=0&&h!==r?V(n,h,c):null; if(t===''&&!lab) continue; items.push([c,lab,t]); }
+  const d=openDlg(`${esc(n)} · Zeile ${r+1}`,`<div class="rowcard"><div class="kv">${items.map(([c,l,t])=>`<div class="k">${esc(l||colStr(c))}${isF(n,r,c)?' <span class="small">ƒ</span>':''}</div><div class="v ed" data-rc="${c}" role="button" tabindex="0" ${c===focusC?'style="background:var(--accent-soft)"':''}>${esc(t)||'<span class="muted">–</span>'}</div>`).join('')}</div></div>
+   <div class="small muted">Feld antippen zum Bearbeiten.</div>`,`${r>0?`<button class="btn" data-rn="-1">‹ Zeile davor</button>`:''}<button class="btn" data-rn="1">nächste Zeile ›</button>`);
+  d.querySelectorAll('[data-rc]').forEach(el=>el.onclick=()=>cellDlg(n,r,Number(el.dataset.rc)));
+  d.querySelectorAll('[data-rn]').forEach(b=>b.onclick=()=>rowDlg(n,Math.max(0,Math.min(s.inp.length-1,r+Number(b.dataset.rn))))); }
+function colsDlg(n){ const s=sh(n); const W=Math.max(1,...s.inp.map(x=>x.length)); const h=hdrRow(n); const off=new Set(LS.get('cols:'+n,[]));
+  const cs=[]; for(let c=0;c<W;c++){ if(s.hiddenCols&&s.hiddenCols.includes(c)) continue; cs.push(c); }
+  const d=openDlg(`Spalten · ${esc(n)}`,`<div class="small muted">Haken = sichtbar. Gilt nur auf diesem Gerät.</div><div class="menu">${cs.map(c=>`<label class="btn" style="display:flex;gap:10px;align-items:center"><input type="checkbox" data-col="${c}" ${off.has(c)?'':'checked'}> <b>${colStr(c)}</b> <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h>=0?V(n,h,c)||'':'')}</span></label>`).join('')}</div>`,
+   `<button class="btn" data-cs="all">alle zeigen</button><button class="btn primary" data-cs="ok">Übernehmen</button>`);
+  d.querySelector('[data-cs=all]').onclick=()=>d.querySelectorAll('[data-col]').forEach(x=>x.checked=true);
+  d.querySelector('[data-cs=ok]').onclick=()=>{ const o=[...d.querySelectorAll('[data-col]')].filter(x=>!x.checked).map(x=>Number(x.dataset.col)); LS.set('cols:'+n,o); d.close(); render(); }; }
 /* Fotos an Aufgaben: verkleinern (max. 1600 px, JPEG), lokal vormerken, mit dem nächsten Commit senden */
 async function imgURL(p){ if(S.photos[p]) return 'data:image/jpeg;base64,'+S.photos[p]; let u=await IDB.get('img:'+p); if(u) return u; if(!canSync()) return null;
   try{ const r=await wget('?fresh=1&path='+encodeURIComponent(p)); const b=await r.blob(); u=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(b); }); await IDB.set('img:'+p,u); return u; }catch(e){ return null; } }
@@ -579,21 +751,32 @@ function parseInput(s){ if(s==null) return null; const t=s.trim(); if(t==='') re
   if(t[0]==="'"||t[0]==='=') return "'"+t; return s; }
 /* ============================== Ereignisse ============================== */
 document.addEventListener('click',async e=>{ const a=e.target.closest('[data-act]'); if(!a) return; const k=a.dataset.act;
-  if(k==='close'){ $('#dlg').close(); return; }
-  if(k==='done'){ e.stopPropagation(); const nr=Number(a.dataset.nr); a.style.background='var(--ok-soft)'; await setStatus(nr,'erledigt'); toast('Nr. '+nr+' erledigt'); return; }
+  if(k==='close'){ tryClose(); return; }
+  if(k==='done'){ e.stopPropagation(); if(S.longFired){ S.longFired=false; return; } const nr=Number(a.dataset.nr); a.style.background='var(--ok-soft)'; await setStatusUndo(nr,'erledigt'); return; }
+  if(k==='triage'){ if(S.triSkip&&S.triDone) S.triSkip.forEach(n=>S.triDone.delete(n)); S.triSkip=new Set(); triageDlg(); return; }
   if(k==='task'){ e.preventDefault(); taskDlg(Number(a.dataset.nr)); return; }
   if(k==='filtgo'){ S.filter.a=a.dataset.k; S.filter.q=''; LS.set('filter',S.filter); go('aufgaben'); return; }
-  if(k==='filt'){ S.filter.a=a.dataset.k; LS.set('filter',S.filter); render(); return; }
+  if(k==='filt'){ S.filter.a=a.dataset.k; S.filter.s=''; S.lim=300; LS.set('filter',S.filter); render(); return; }
+  if(k==='freset'){ S.filter.et=S.filter.gw=S.filter.au=''; LS.set('filter',S.filter); render(); return; }
+  if(k==='more'){ S[a.dataset.k]+=a.dataset.k==='lim'?300:200; const y=window.scrollY; render(); window.scrollTo(0,y); return; }
+  if(k==='gal'){ galDlg(Number(a.dataset.i)); return; }
+  if(k==='elf'){ S.filter.el=a.dataset.k; render(); return; }
+  if(k==='ekf'){ S.filter.ek=a.dataset.k; render(); return; }
+  if(k==='ekchk'){ e.stopPropagation(); const r=Number(a.dataset.r); const was=V(EK,r,0); const nv=String(was||'').toLowerCase()==='ja'?null:'ja'; await doOp({op:'set',sheet:EK,r,c:0,input:nv});
+    toast((nv?'Gekauft: ':'Wieder offen: ')+String(V(EK,r,2)).slice(0,40),5000,['Rückgängig',()=>doOp({op:'set',sheet:EK,r,c:0,input:was})]); return; }
+  if(k==='rowcard'){ rowDlg(a.dataset.s,Number(a.dataset.r)); return; }
+  if(k==='cols'){ colsDlg(S.sheetView); return; }
+  if(k==='wth'){ S.filter.wthema=a.dataset.k; S.wlim=200; render(); return; }
   if(k==='kfilt'){ S.filter.k=a.dataset.k; LS.set('filter',S.filter); render(); return; }
   if(k==='kp'){ kpDlg(Number(a.dataset.r)); return; }
   if(k==='wsd'){ wsDlg(Number(a.dataset.r)); return; }
   if(k==='ws-for'){ $('#dlg').close(); newWSDlg(a.dataset.nr); return; }
   if(k==='ct'){ ctDlg(Number(a.dataset.r)); return; }
-  if(k==='tab'){ e.preventDefault(); go(a.dataset.t); return; }
-  if(k==='sheet'){ S.sheetView=a.dataset.s; go('blatt'); return; }
+  if(k==='tab'){ e.preventDefault(); if($('#dlg').open) $('#dlg').close(); go(a.dataset.t); return; }
+  if(k==='sheet'){ if($('#dlg').open) $('#dlg').close(); S.sheetView=a.dataset.s; S.gridQ=''; go('blatt'); return; }
   if(k==='sheet-row'){ $('#dlg').close(); S.sheetView=a.dataset.s; S.gridQ=''; go('blatt'); setTimeout(()=>{ const tw=$('#tw'); if(tw) tw.scrollTop=Math.max(0,(Number(a.dataset.r)-2)*RH); },50); return; }
   if(k==='bericht'){ S.report=a.dataset.s; go('bericht'); return; }
-  if(k==='mehr'){ const v=a.dataset.k; if(v.startsWith('blatt:')){ S.sheetView=v.slice(6); S.gridQ=''; go('blatt'); } else if(v.startsWith('bericht:')){ S.report=v.slice(8); go('bericht'); } else go(v); return; }
+  if(k==='mehr'){ const v=a.dataset.k; LS.set('recent',U.pushRecent(LS.get('recent',[]),v,6)); if(v.startsWith('blatt:')){ S.sheetView=v.slice(6); S.gridQ=''; go('blatt'); } else if(v.startsWith('bericht:')){ S.report=v.slice(8); go('bericht'); } else go(v); return; }
   if(k==='cell'){ cellDlg(a.dataset.s,Number(a.dataset.r),Number(a.dataset.c)); return; }
   if(k==='saveset'){ S.settings={url:$('#s_url').value.trim().replace(/\/+$/,''),readKey:$('#s_rk').value.trim(),writeKey:$('#s_wk').value.trim(),who:$('#s_who').value}; LS.set('settings',S.settings); toast('Gespeichert'); pull(true); return; }
   if(k==='sync'){ if(S.journal.length){ S.forcePush=true; saveNow(); } else pull(true); return; }
@@ -604,11 +787,21 @@ document.addEventListener('input',e=>{ const id=e.target.id; const deb=(fn)=>{ c
   if(id==='q'){ S.filter.q=e.target.value; LS.set('filter',S.filter); deb(()=>{ render(); const q=$('#q'); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }); }
   if(id==='wq'){ S.filter.w=e.target.value; deb(()=>{ render(); const q=$('#wq'); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }); }
   if(id==='cq'){ S.filter.c=e.target.value; deb(()=>{ render(); const q=$('#cq'); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }); }
+  if(id==='mq'){ S.mq=e.target.value; deb(()=>{ render(); const q=$('#mq'); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }); }
   if(id==='gq'){ S.gridQ=e.target.value; deb(()=>{ gridAfter(); }); }
 });
 document.addEventListener('change',async e=>{ if(e.target.id==='fotoIn'&&e.target.files[0]){ try{ await addFoto(e.target.files[0],e.target.dataset.nr); }catch(err){ toast('Foto: '+err.message,5000); } e.target.value=''; return; }
   if(e.target.id==='hid'){ S.showHidden=e.target.checked; render(); }
+  const fm={f_et:'et',f_gw:'gw',f_au:'au',f_s:'s'}; if(fm[e.target.id]){ S.filter[fm[e.target.id]]=e.target.value; S.fOpen=true; S.lim=300; LS.set('filter',S.filter); render(); return; }
+  if(e.target.id==='wthema'||e.target.id==='wtyp'){ S.filter[e.target.id]=e.target.value; S.wlim=200; render(); return; }
   if(e.target.id==='imp'){ const f=e.target.files[0]; if(!f) return; const wb=JSON.parse(await f.text()); S.texts=WBCodec.splitTexts(WBCodec.encodeSplit(wb)); setWB(WBCodec.fromTexts(S.texts)); await IDB.set('texts',S.texts); S.journal=[]; await IDB.set('journal',[]); render(); startEngine(); toast('Arbeitsmappe geladen'); } });
+/* Langer Druck auf den Kreis = Statusauswahl; Tastatur: Enter/Leertaste auf Listeneinträgen */
+let lpT=null;
+document.addEventListener('pointerdown',e=>{ const c=e.target.closest('.check[data-nr]'); if(!c) return; S.longFired=false; clearTimeout(lpT); lpT=setTimeout(()=>{ S.longFired=true; if(navigator.vibrate) try{navigator.vibrate(15);}catch(_){} statusMenu(Number(c.dataset.nr)); },550); });
+['pointerup','pointercancel','pointerleave'].forEach(t=>document.addEventListener(t,()=>clearTimeout(lpT),true));
+document.addEventListener('contextmenu',e=>{ if(e.target.closest('.check')) e.preventDefault(); });
+document.addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&e.target.matches('[role=button]')){ e.preventDefault(); e.target.click(); } });
+document.addEventListener('toggle',e=>{ const b=e.target.dataset&&e.target.dataset.box; if(b){ S.boxes[b]=e.target.open; LS.set('boxes',S.boxes); } },true);
 $('#syncChip').onclick=()=>{ if(S.journal.length){ S.forcePush=true; saveNow(); } else pull(true); }; $('#engChip').onclick=()=>toast('Rechenkern: '+S.engine);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') pull(); else if(S.dirty||S.journal.length){ S.forcePush=true; saveNow(); } });
 window.addEventListener('online',()=>pull());
